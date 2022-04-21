@@ -1,14 +1,24 @@
-# Apache Template
+# READ ME
+This is a short Python script to show an end to end connection from Zenoh IoT Protocol to a Panel Dashboard Webapplication, which could run in a Notebook to analyse the incoming IoT Data.
 
-[Apache Template](https://template.staged.apache.org/)
+## Prerequisites
 
-This repository provides a website template for [ASF-Pelican](https://infra.apache.org/asf-pelican.html). That page, and pages linked from it, provide extensive documentation on how to deploy the template.
+Install and execute
+1) [Zenoh Installation](https://zenoh.io/docs/getting-started/installation/)
 
-Pelican build site infrastructure is found [here](https://github.com/apache/infrastructure-pelican). (WIP)
+2) [Zenoh First App](https://zenoh.io/docs/getting-started/first-app/)
 
-If you use this template for your project website and provide a [logo](https://www.apache.org/logos/) then
-your project should pass "[Apache Project Website Checks](https://whimsy.apache.org/site/)".
+Adapt the Producer topic to the one in the panel_script py or the other way around. 
+- "'/myhome/kitchen/temp'"
+Same for the Zenoh Broker
+- "'/myhome/**'"
 
-## How to use this template
+3) Install [Panel](https://panel.holoviz.org/getting_started/index.html)
 
-Follow the [Getting started guide](https://infra.apache.org/asf-pelican-gettingstarted.html).
+4) Exececute in a Shell / Terminal: ```panel serve 'panel_script.py' --autoreload --show
+
+
+
+
+
+
