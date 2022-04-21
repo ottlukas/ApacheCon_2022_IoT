@@ -15,7 +15,8 @@ Same for the Zenoh Broker
 
 3) Install [Panel](https://panel.holoviz.org/getting_started/index.html)
 
-4) Exececute in a Shell / Terminal: ```panel serve 'panel_script.py' --autoreload --show
+4) Exececute in a Shell / Terminal: 
+```panel serve 'panel_script.py' --autoreload --show ``` 
 
 
 
