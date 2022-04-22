@@ -38,6 +38,29 @@ def model():
 
     pn.Column(gauge_pane)
     return gauge_pane
+# Linechart
+echart = {
+    'title': {
+        'text': 'Temperature over Time'
+    },
+    'tooltip': {},
+    'legend': {
+        'data':['Temperature over time']
+    },
+    'xAxis': {
+        'data': [0,1,2,3,4,5,6,7,8,9,10]
+    },
+    'yAxis': {},
+    'series': [{
+        'name': 'Temperature',
+        'type': 'bar',
+        'data': [10,15,23,16,24,5,33,45,17,8,22]
+    }],
+};
+
+echart['series'] = [dict(echart['series'][0], type= 'line')]
+responsive_spec = dict(echart, responsive=True)
+echart_pane = pn.pane.ECharts(responsive_spec, height=400).servable()
 
 pn.pane.JPG("https://apache.org/img/asf-estd-1999-logo.jpg", sizing_mode="scale_width", embed=False).servable(area="sidebar")
 pn.panel("# Settings").servable(area="sidebar")
