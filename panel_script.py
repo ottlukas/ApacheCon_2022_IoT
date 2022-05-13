@@ -7,7 +7,7 @@ Created on Thu Apr 21 19:10:07 2022
 from zenoh import Zenoh
 import panel as pn
 import pandas as pd
-pn.extension(sizing_mode="stretch_width",template="fast",'echarts')
+pn.extension('echarts',sizing_mode="stretch_width",template="fast")
 ACCENT = "orange"
 pn.state.template.param.update(site="Apache Con", title="Introduction to data apps with Panel", 
                                sidebar_width=200, accent_base_color=ACCENT, 
