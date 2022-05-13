@@ -13,6 +13,9 @@ Adapt the Producer topic to the one in the panel_script py or the other way arou
 Same for the Zenoh Broker
 - "'/myhome/**'"
 
+Start zenoh broker:
+```zenohd --mem-storage='/myfactory/**' ``` 
+
 3) Install [Panel](https://panel.holoviz.org/getting_started/index.html)
 
 4) Exececute in a Shell / Terminal: 

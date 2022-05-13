@@ -17,7 +17,9 @@ def retrieve():
     z = Zenoh({})
     w = z.workspace('/')
     results = w.get('/myfactory/machine1/temp')
+    print (results)
     return results[0].value.get_content()
+
 
 # Panel Model eCharts Gauge
 def model():
