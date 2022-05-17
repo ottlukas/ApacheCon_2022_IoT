@@ -5,6 +5,7 @@ Created on Thu Apr 21 19:10:07 2022
 @author: luk
 """
 from zenoh import Zenoh
+import time
 import panel as pn
 import pandas as pd
 pn.extension('echarts',sizing_mode="stretch_width",template="fast")
@@ -12,14 +13,14 @@ ACCENT = "orange"
 pn.state.template.param.update(site="Apache Con", title="Introduction to data apps with Panel", 
                                sidebar_width=200, accent_base_color=ACCENT, 
                                header_background=ACCENT, font="Montserrat")
+
 # Zenoh Retrieve values
 def retrieve():
-    z = Zenoh({})
+    z = Zenoh({'peer': 'tcp/127.0.0.1:7447'})
     w = z.workspace('/')
     results = w.get('/myfactory/machine1/temp')
     print (results)
     return results[0].value.get_content()
-
 
 # Panel Model eCharts Gauge
 def model():
