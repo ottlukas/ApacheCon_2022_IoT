@@ -4,10 +4,17 @@
 Created on Thu Apr 21 19:10:07 2022
 @author: luk
 """
-from zenoh import Zenoh
+import re
+from sqlite3 import Timestamp
+import zenoh
 import time
 import panel as pn
+import numpy as np
 import pandas as pd
+
+#Settings
+z = zenoh.Zenoh({'peer': 'tcp/127.0.0.1:7447'})
+w = z.workspace('/')
 pn.extension('echarts',sizing_mode="stretch_width",template="fast")
 ACCENT = "orange"
 pn.state.template.param.update(site="Apache Con", title="Introduction to data apps with Panel", 
@@ -16,24 +23,34 @@ pn.state.template.param.update(site="Apache Con", title="Introduction to data ap
 
 # Zenoh Retrieve values
 def retrieve():
-    z = Zenoh({'peer': 'tcp/127.0.0.1:7447'})
-    w = z.workspace('/')
     results = w.get('/myfactory/machine1/temp')
-    print (results)
     return results[0].value.get_content()
 
+# Stream function
+global temperature, time_value
+temperature = 0
+if not retrieve() == None:
+    temperature = retrieve()
+
+def stream():
+    #time_value += 1
+    temperature = retrieve()
+    #print (temperature)
+
+pn.state.add_periodic_callback(stream, 50)
+   
 # Panel Model eCharts Gauge
-def model():
+def model():    
     gauge = {
 		'tooltip': {
-		    'formatter': '{a} <br/>{b} : {c}%'
+		    'formatter': '{a} <br/>{b} : {c}°C'
 		},
 		'series': [
 		    {
 		        'name': 'Gauge',
 		        'type': 'gauge',
-		        'detail': {'formatter': '{value} °C'},
-		        'data': [{'value': [retrieve()], 'name': 'Temperature'}]
+		        'detail': {'formatter': '{value}°C'},
+		        'data': [{'value': [temperature], 'name': 'Temperature'}]
 		    }
 		]
  	};
@@ -41,6 +58,10 @@ def model():
 
     pn.Column(gauge_pane)
     return gauge_pane
+
+#add panel gauge
+pn.panel(model).servable()
+
 # Linechart
 echart = {
     'title': {
@@ -65,7 +86,6 @@ echart['series'] = [dict(echart['series'][0], type= 'line')]
 responsive_spec = dict(echart, responsive=True)
 echart_pane = pn.pane.ECharts(responsive_spec, height=400).servable()
 
+# side panel with logo and "Settings"
 pn.pane.JPG("https://apache.org/img/asf-estd-1999-logo.jpg", sizing_mode="scale_width", embed=False).servable(area="sidebar")
 pn.panel("# Settings").servable(area="sidebar")
-
-pn.panel(model).servable()

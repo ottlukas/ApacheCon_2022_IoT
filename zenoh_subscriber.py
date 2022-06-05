@@ -2,9 +2,9 @@ from zenoh import Zenoh, ChangeKind
 import time
 
 def listener(change):
-    if change.kind == ChangeKind.PUT:
-        print('Publication received: "{}" = "{}"'
-                .format(change.path, change.value))
+    print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
+          .format(change.kind, change.path,
+                  '' if change.value is None else change.value.get_content(), change.timestamp))
 
 if __name__ == "__main__":
     z = Zenoh({'peer': 'tcp/127.0.0.1:7447'})
