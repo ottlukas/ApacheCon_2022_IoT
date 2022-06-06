@@ -36,31 +36,27 @@ def stream():
     #time_value += 1
     temperature = retrieve()
     #print (temperature)
-
-pn.state.add_periodic_callback(stream, 50)
-   
+    
 # Panel Model eCharts Gauge
-def model():    
-    gauge = {
-		'tooltip': {
-		    'formatter': '{a} <br/>{b} : {c}°C'
-		},
-		'series': [
-		    {
-		        'name': 'Gauge',
-		        'type': 'gauge',
-		        'detail': {'formatter': '{value}°C'},
-		        'data': [{'value': [temperature], 'name': 'Temperature'}]
-		    }
-		]
- 	};
-    gauge_pane = pn.pane.ECharts(gauge, width=400, height=400)
-
-    pn.Column(gauge_pane)
-    return gauge_pane
-
-#add panel gauge
-pn.panel(model).servable()
+gauge = {
+    'tooltip': {
+        'formatter': '{a} <br/>{b} : {c}°C'
+    },
+    'series': [
+        {
+            'name': 'Gauge',
+            'type': 'gauge',
+            'detail': {'formatter': '{value}°C'},
+            'data': [{'value': [temperature], 'name': 'Temperature'}]
+        }
+    ]
+};
+    
+gauge_pane = pn.pane.ECharts(gauge,width=400, height=400).servable()
+pn.Column(gauge_pane)
+pn.state.add_periodic_callback(stream, 50)
+# how to update the gauge values ?
+#gauge_pane.jscallback(args={'gauge': gauge_pane}, value="""gauge.data.series[0].data[0].value=gauge.data.series[0].data[0].value""")
 
 # Linechart
 echart = {
