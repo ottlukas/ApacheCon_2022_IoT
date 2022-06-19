@@ -26,18 +26,11 @@ def retrieve():
     results = w.get('/myfactory/machine1/temp')
     return results[0].value.get_content()
 
-# Stream function
-global temperature, time_value
+# Gauge data
+global temperature, time_value, gauge
 temperature = 0
 if not retrieve() == None:
     temperature = retrieve()
-
-def stream():
-    #time_value += 1
-    temperature = retrieve()
-    #print (temperature)
-    
-# Panel Model eCharts Gauge
 gauge = {
     'tooltip': {
         'formatter': '{a} <br/>{b} : {c}°C'
@@ -51,13 +44,21 @@ gauge = {
         }
     ]
 };
-    
-gauge_pane = pn.pane.ECharts(gauge,width=400, height=400).servable()
-pn.Column(gauge_pane)
-pn.state.add_periodic_callback(stream, 50)
-# how to update the gauge values ?
-#gauge_pane.jscallback(args={'gauge': gauge_pane}, value="""gauge.data.series[0].data[0].value=gauge.data.series[0].data[0].value""")
 
+# Stream function
+def stream():
+    #time_value += 1
+    temperature = retrieve()
+    #print (temperature)
+    # how to update the gauge values ? 
+    # -> the dictionary update below does not update the values in the panel
+    #print(gauge['series'][0]['data'][0]['value'])
+    gauge.update({['series'][0]['data'][0]['value'] : temperature})
+    print(gauge['series'][0]['data'][0]['value'])
+    
+print(gauge['series'][0]['data'][0]['value'])  
+gauge_pane = pn.pane.ECharts(gauge,width=400, height=400).servable()
+pn.state.add_periodic_callback(stream, 150)
 # Linechart
 echart = {
     'title': {
