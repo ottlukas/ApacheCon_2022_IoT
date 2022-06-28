@@ -27,10 +27,19 @@ def retrieve():
     return results[0].value.get_content()
 
 # Gauge data
-global temperature, time_value, gauge
 temperature = 0
 if not retrieve() == None:
     temperature = retrieve()
+    
+# invisible slider to jscallback
+slider = pn.widgets.FloatSlider(visible=False)
+# Stream function
+def stream():
+    #gauge invisible slider to update gauge
+    temperature = retrieve()
+    print('in python', temperature)
+    slider.value = temperature # this step triggers internally the js_callback attached to the slider 
+    
 gauge = {
     'tooltip': {
         'formatter': '{a} <br/>{b} : {c}°C'
@@ -45,20 +54,11 @@ gauge = {
     ]
 };
 
-# Stream function
-def stream():
-    #time_value += 1
-    temperature = retrieve()
-    #print (temperature)
-    # how to update the gauge values ? 
-    # -> the dictionary update below does not update the values in the panel
-    #print(gauge['series'][0]['data'][0]['value'])
-    gauge.update({['series'][0]['data'][0]['value'] : temperature})
-    print(gauge['series'][0]['data'][0]['value'])
-    
-print(gauge['series'][0]['data'][0]['value'])  
-gauge_pane = pn.pane.ECharts(gauge,width=400, height=400).servable()
-pn.state.add_periodic_callback(stream, 150)
+#callback
+pn.state.add_periodic_callback(stream, 250)
+# gauge panel + slider
+gauge_pane = pn.pane.ECharts(gauge,width=400, height=400)
+row = pn.Row(gauge_pane,slider).servable()
 # Linechart
 echart = {
     'title': {
@@ -79,10 +79,18 @@ echart = {
     }],
 };
 
+
 echart['series'] = [dict(echart['series'][0], type= 'line')]
 responsive_spec = dict(echart, responsive=True)
 echart_pane = pn.pane.ECharts(responsive_spec, height=400).servable()
 
+# js callback functions
+slider.jscallback(args={'gauge': gauge_pane}, value="""
+    console.log( 'dummy slider:', cb_obj.value, 
+            'gauge value',gauge.data.series[0].data[0].value);
+    gauge.data.series[0].data[0].value = cb_obj.value;
+    gauge.properties.data.change.emit()"""
+    )
 # side panel with logo and "Settings"
 pn.pane.JPG("https://apache.org/img/asf-estd-1999-logo.jpg", sizing_mode="scale_width", embed=False).servable(area="sidebar")
 pn.panel("# Settings").servable(area="sidebar")

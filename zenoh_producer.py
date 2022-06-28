@@ -13,7 +13,7 @@ def run_sensor_loop(w):
         t = read_temp()
         w.put('/myfactory/machine1/temp', t)
         print (t)
-        time.sleep(10)
+        time.sleep(15)
 
 if __name__ == "__main__":
     z = Zenoh({'peer': 'tcp/127.0.0.1:7447'})
