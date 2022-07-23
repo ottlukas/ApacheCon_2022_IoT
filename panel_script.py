@@ -24,6 +24,7 @@ pn.state.template.param.update(site="Apache Con", title="Introduction to data ap
 # Zenoh Retrieve values
 def retrieve():
     results = w.get('/myfactory/machine1/temp')
+    #TODO insert into IoTDB 
     return results[0].value.get_content()
 
 # Gauge data
@@ -37,7 +38,7 @@ slider = pn.widgets.FloatSlider(visible=False)
 def stream():
     #gauge invisible slider to update gauge
     temperature = retrieve()
-    print('in python', temperature)
+    #print('in python', temperature)
     slider.value = temperature # this step triggers internally the js_callback attached to the slider 
     
 gauge = {
