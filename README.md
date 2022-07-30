@@ -15,8 +15,19 @@ Same for the Zenoh Broker
 
 Start zenoh broker:
 ```zenohd --mem-storage='/myfactory/**' ``` 
+3) [Apache IoTDB Quickstart](https://iotdb.apache.org/UserGuide/V0.13.x/QuickStart/QuickStart.html)
 
-3) Install [Panel](https://panel.holoviz.org/getting_started/index.html)
+Download [Apache IoTDB](https://iotdb.apache.org/Download/)
+
+Execute in IoTDB CLI:
+```
+SET STORAGE GROUP TO root.myfactory
+CREATE TIMESERIES root.myfactory.machine1.temperature WITH DATATYPE=INT32, ENCODING=PLAIN
+INSERT INTO root.myfactory.machine1(timestamp,temperature) values(200,21) // Test Insert
+SELECT * FROM root.myfactory.machine1
+ ```
+
+4) Install [Panel](https://panel.holoviz.org/getting_started/index.html)
 
 4) Exececute in a Shell / Terminal: 
 ```panel serve 'panel_script.py' --autoreload --show ``` 
