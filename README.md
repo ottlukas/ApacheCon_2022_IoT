@@ -21,7 +21,12 @@ Install and execute
 3) [Apache IoTDB Quickstart](https://iotdb.apache.org/UserGuide/V0.13.x/QuickStart/QuickStart.html)
 
     Download [Apache IoTDB](https://iotdb.apache.org/Download/)
-
+    ```
+    ./sbin/start-server.sh 
+    ```
+    ```
+    ./sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
+    ```
     Execute in IoTDB CLI:
     ```
     SET STORAGE GROUP TO root.myfactory
