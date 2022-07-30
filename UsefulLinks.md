@@ -30,7 +30,7 @@
 
 ## PANEL & APACHE ECHARTS
 - [Panel-ApacheEcharts Reference](https://panel.holoviz.org/reference/panes/ECharts.html#panes-gallery-echarts)
-- [](https://panel.holoviz.org/gallery/streaming/hardware_automation.html#streaming-gallery-hardware-automation)
+- [Panel Streaming Gallery](https://panel.holoviz.org/gallery/streaming/hardware_automation.html#streaming-gallery-hardware-automation)
 - [Panel runs natively in Jupyter Notebooks](https://blog.holoviz.org/panel_0.12.0.html#JupyterLab-previews )
 - [Panel Streaming Plots](https://github.com/MarcSkovMadsen/awesome-panel/blob/master/awesome_panel/apps/streaming_plots.py)
 - [Update existing Plot](https://stackoverflow.com/questions/71766340/how-to-update-existing-plot-with-panel)
@@ -43,4 +43,3 @@
 - [Panel Forum Question on Streaming Data](https://discourse.holoviz.org/t/list-of-streaming-resources/1841)
 - [Streaming data](https://holoviews.org/user_guide/Streaming_Data.html)
 - [Updating Echart in Panel](https://stackoverflow.com/questions/72762347/panel-jscallback-function-linking-stream-data-to-a-jsobject-in-echarts-withi )
-- []()
