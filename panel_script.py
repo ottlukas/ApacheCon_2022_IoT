@@ -76,6 +76,7 @@ pn.state.add_periodic_callback(stream, 250)
 gauge_pane = pn.pane.ECharts(gauge,width=400, height=400)
 row = pn.Row(gauge_pane,slider).servable()
 # Linechart
+# TODO Query IoTDB and update Linechart with current Temperature values
 echart = {
     'title': {
         'text': 'Temperature over Time'
