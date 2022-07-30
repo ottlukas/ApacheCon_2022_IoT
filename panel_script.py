@@ -7,14 +7,23 @@ Created on Thu Apr 21 19:10:07 2022
 import re
 from sqlite3 import Timestamp
 import zenoh
+from iotdb.Session import Session
+from datetime import datetime
 import time
 import panel as pn
 import numpy as np
 import pandas as pd
 
 #Settings
+#Zenoh
 z = zenoh.Zenoh({'peer': 'tcp/127.0.0.1:7447'})
 w = z.workspace('/')
+# IoTDB
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = "root"
+password_ = "root"
+# Panel
 pn.extension('echarts',sizing_mode="stretch_width",template="fast")
 ACCENT = "orange"
 pn.state.template.param.update(site="Apache Con", title="Introduction to data apps with Panel", 
@@ -24,7 +33,13 @@ pn.state.template.param.update(site="Apache Con", title="Introduction to data ap
 # Zenoh Retrieve values
 def retrieve():
     results = w.get('/myfactory/machine1/temp')
-    #TODO insert into IoTDB 
+    session = Session(ip, port_, username_, password_)
+    session.open(False)
+    date_time = datetime.fromtimestamp(results[0].timestamp.time)
+    sql = "INSERT INTO root.myfactory.machine1(timestamp,temperature) values("+str(date_time)+", "+str(results[0].value.get_content())+")"
+    #print(sql)
+    session.execute_non_query_statement(sql)
+    session.close()
     return results[0].value.get_content()
 
 # Gauge data
