@@ -32,8 +32,8 @@ def retrieve():
     temperature = results[0].value.get_content()
     session = Session(ip, port_, username_, password_)
     session.open(False)
-    date_time = datetime.fromtimestamp(results[0].timestamp.time)
-    sql = "INSERT INTO root.myfactory.machine1(timestamp,temperature) values("+str(date_time)+", "+str(results[0].value.get_content())+")"
+    datetime_iso = datetime.fromtimestamp(results[0].timestamp.time).isoformat()
+    sql = "INSERT INTO root.myfactory.machine1(timestamp,temperature) values("+str(datetime_iso)+", "+str(results[0].value.get_content())+")"
     session.execute_non_query_statement(sql)
     result = session.execute_query_statement("SELECT * FROM root.myfactory.machine1 ORDER BY TIME DESC limit 10")
     # Transform to Pandas Dataset
