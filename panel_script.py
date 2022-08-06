@@ -4,15 +4,11 @@
 Created on Thu Apr 21 19:10:07 2022
 @author: luk
 """
-import re
-from sqlite3 import Timestamp
 import zenoh
 from iotdb.Session import Session
 from datetime import datetime
-import time
 import panel as pn
-import numpy as np
-import pandas as pd
+
 
 #Settings
 #Zenoh
@@ -33,26 +29,31 @@ pn.state.template.param.update(site="Apache Con", title="Introduction to data ap
 # Zenoh Retrieve values
 def retrieve():
     results = w.get('/myfactory/machine1/temp')
+    temperature = results[0].value.get_content()
     session = Session(ip, port_, username_, password_)
     session.open(False)
     date_time = datetime.fromtimestamp(results[0].timestamp.time)
     sql = "INSERT INTO root.myfactory.machine1(timestamp,temperature) values("+str(date_time)+", "+str(results[0].value.get_content())+")"
-    #print(sql)
     session.execute_non_query_statement(sql)
+    result = session.execute_query_statement("SELECT * FROM root.myfactory.machine1 ORDER BY TIME DESC limit 10")
+    # Transform to Pandas Dataset
+    df = result.todf()
     session.close()
-    return results[0].value.get_content()
+    values = df['root.myfactory.machine1.temperature'].values.tolist()
+    timevalues = df.Time.values.tolist()
+    return temperature, values, timevalues
 
 # Gauge data
 temperature = 0
 if not retrieve() == None:
-    temperature = retrieve()
+    temperature, values, timevalues = retrieve()
     
 # invisible slider to jscallback
 slider = pn.widgets.FloatSlider(visible=False)
 # Stream function
 def stream():
     #gauge invisible slider to update gauge
-    temperature = retrieve()
+    temperature, values, timevalues = retrieve()
     #print('in python', temperature)
     slider.value = temperature # this step triggers internally the js_callback attached to the slider 
     
@@ -76,7 +77,6 @@ pn.state.add_periodic_callback(stream, 250)
 gauge_pane = pn.pane.ECharts(gauge,width=400, height=400)
 row = pn.Row(gauge_pane,slider).servable()
 # Linechart
-# TODO Query IoTDB and update Linechart with current Temperature values
 echart = {
     'title': {
         'text': 'Temperature over Time'
@@ -86,13 +86,13 @@ echart = {
         'data':['Temperature over time']
     },
     'xAxis': {
-        'data': [0,1,2,3,4,5,6,7,8,9,10]
+        'data': timevalues
     },
     'yAxis': {},
     'series': [{
         'name': 'Temperature',
         'type': 'bar',
-        'data': [10,15,23,16,24,5,33,45,17,8,22]
+        'data': values
     }],
 };
 
