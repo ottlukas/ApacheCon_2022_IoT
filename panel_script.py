@@ -50,12 +50,17 @@ if not retrieve() == None:
     
 # invisible slider to jscallback
 slider = pn.widgets.FloatSlider(visible=False)
+literal_input = pn.widgets.LiteralInput(name='Literal Input (dict)', 
+        value={'key': [1, 2, 3]}, type=dict, visible=False)
 # Stream function
 def stream():
     #gauge invisible slider to update gauge
     temperature, values, timevalues = retrieve()
-    #print('in python', temperature)
-    slider.value = temperature # this step triggers internally the js_callback attached to the slider 
+    literal_dict = {str(l):v for l, v in zip(timevalues, values)}
+    print('in python', literal_dict)
+    literal_input.value = literal_dict
+    slider.value = temperature
+    # this step triggers internally the js_callback attached to the slider 
     
 gauge = {
     'tooltip': {
@@ -69,13 +74,20 @@ gauge = {
             'data': [{'value': [temperature], 'name': 'Temperature'}]
         }
     ]
-};
+}
 
 #callback
 pn.state.add_periodic_callback(stream, 250)
 # gauge panel + slider
 gauge_pane = pn.pane.ECharts(gauge,width=400, height=400)
 row = pn.Row(gauge_pane,slider).servable()
+# js callback functions
+slider.jscallback(args={'gauge': gauge_pane}, value="""
+    console.log( 'dummy slider:', cb_obj.value, 
+            'gauge value',gauge.data.series[0].data[0].value);
+    gauge.data.series[0].data[0].value = cb_obj.value;
+    gauge.properties.data.change.emit()"""
+    )
 # Linechart
 echart = {
     'title': {
@@ -94,20 +106,31 @@ echart = {
         'type': 'bar',
         'data': values
     }],
-};
-
+}
 
 echart['series'] = [dict(echart['series'][0], type= 'line')]
 responsive_spec = dict(echart, responsive=True)
-echart_pane = pn.pane.ECharts(responsive_spec, height=400).servable()
+echart_pane = pn.pane.ECharts(responsive_spec,theme="dark", height=400)
+row = pn.Row(echart_pane,literal_input).servable()
+literal_input.jscallback(args={'echart': echart_pane,}, value="""
+    console.log(cb_obj.value)
+    let literal_dict = JSON.parse( cb_obj.value.replaceAll("'",'\"') )
+    console.log(literal_dict)
+    
+    let keys = Object.keys(literal_dict);
+    let values = Object.entries(literal_dict);
 
-# js callback functions
-slider.jscallback(args={'gauge': gauge_pane}, value="""
-    console.log( 'dummy slider:', cb_obj.value, 
-            'gauge value',gauge.data.series[0].data[0].value);
-    gauge.data.series[0].data[0].value = cb_obj.value;
-    gauge.properties.data.change.emit()"""
+    console.log(typeof(literal_dict),literal_dict, 'dummy slider:', keys, values ,
+            'echart value',echart.data.xAxis.data, 
+           echart.data.series[0].data );
+
+    echart.data.xAxis.data = [...echart.data.xAxis.data, ...keys].slice(-1000);
+    echart.data.series[0].data = [...echart.data.series[0].data, ...values].slice(-1000);
+
+    echart.properties.data.change.emit()
+"""
     )
+
 # side panel with logo and "Settings"
 pn.pane.JPG("https://apache.org/img/asf-estd-1999-logo.jpg", sizing_mode="scale_width", embed=False).servable(area="sidebar")
 pn.panel("# Settings").servable(area="sidebar")
