@@ -57,7 +57,7 @@ def stream():
     #gauge invisible slider to update gauge
     temperature, values, timevalues = retrieve()
     literal_dict = {str(l):v for l, v in zip(timevalues, values)}
-    print('in python', literal_dict)
+    #print('in python', literal_dict)
     literal_input.value = literal_dict
     slider.value = temperature
     # this step triggers internally the js_callback attached to the slider 
