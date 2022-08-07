@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@author: luk
+source: https://zenoh.io/docs/getting-started/first-app/
+"""
 from zenoh import Zenoh
 from iotdb.Session import Session
 from datetime import datetime
@@ -15,7 +21,7 @@ if __name__ == "__main__":
     session.open(False)
     datetime_iso = datetime.fromtimestamp(results[0].timestamp.time).isoformat()
     #print(datetime_iso)
-    #sql = "INSERT INTO root.myfactory.machine1(timestamp,temperature) values("+str(datetime_iso)+", "+str(results[0].value.get_content())+")"
+    sql = "INSERT INTO root.myfactory.machine1(timestamp,temperature) values("+str(datetime_iso)+", "+str(results[0].value.get_content())+")"
     #print(sql)
     session.execute_non_query_statement(sql)
     result = session.execute_query_statement("SELECT * FROM root.myfactory.machine1")

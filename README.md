@@ -37,7 +37,7 @@ Install and execute
 
 4) Install [Panel](https://panel.holoviz.org/getting_started/index.html)
 
-4) Exececute in a Shell / Terminal: 
+4) Exececute in a Shell / Terminal (whith running Zenoh Broker and Apache IoTDB): 
 
     ``` 
     panel serve 'panel_script.py' --autoreload --show 

@@ -14,6 +14,13 @@
 - [Zenoh Python API - Subscribe](https://zenoh-python.readthedocs.io/en/branch_0.5.0-beta.9/zenoh-api.html#subscribe-for-keys-values-changes-from-zenoh)
 - [Zenoh Python API - Timestamp](https://zenoh-python.readthedocs.io/en/branch_0.5.0-beta.9/zenoh-net-api.html#zenoh.net.Timestamp)
 
+### Timestamp conversion in Python
+- [Epoch to Datetime](https://pythonguides.com/python-epoch-to-datetime/)
+- [ISO 8601 date and time format](https://www.iso.org/iso-8601-date-and-time-format.html)
+- [Python datetime](https://docs.python.org/3/library/datetime.html)
+- [Convert String to Datetime](https://pythonguides.com/convert-a-string-to-datetime-in-python/)
+- [Access timestamp in pandas dataframe](https://stackoverflow.com/questions/15792018/how-to-access-timestamp-in-dataframe-pandas)
+
 
 ## APACHE IOTDB
 - [Apache IoTDB Quickstart](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html)
@@ -26,6 +33,8 @@
 - [Apache IoTDB - SQL Reference](https://iotdb.apache.org/UserGuide/Master/Reference/SQL-Reference.html)
 - [Apache IoTDB - Encoding Reference](https://iotdb.apache.org/UserGuide/Master/Data-Concept/Encoding.html#encoding-methods)
 - [Apache IoTDB - Timestamp](https://iotdb.apache.org/UserGuide/Master/Data-Concept/Data-Type.html#timestamp)
+- [Session Example](https://github.com/apache/iotdb/blob/master/client-py/SessionExample.py)
+- [Session Aligned Timeseries Example](https://github.com/apache/iotdb/blob/master/client-py/SessionAlignedTimeseriesExample.py)
 
 
 ## PANEL & APACHE ECHARTS
@@ -42,4 +51,7 @@
 - [Panel Echarts JScallback](https://panel.holoviz.org/api/panel.pane.html?highlight=jscallback#panel.pane.ECharts.jscallback )
 - [Panel Forum Question on Streaming Data](https://discourse.holoviz.org/t/list-of-streaming-resources/1841)
 - [Streaming data](https://holoviews.org/user_guide/Streaming_Data.html)
-- [Updating Echart in Panel](https://stackoverflow.com/questions/72762347/panel-jscallback-function-linking-stream-data-to-a-jsobject-in-echarts-withi )
+- [Updating Echart in Panel](https://stackoverflow.com/questions/72762347/panel-jscallback-function-linking-stream-data-to-a-jsobject-in-echarts-withi)
+- [Panel - JSCallback function](https://discourse.holoviz.org/t/panel-jscallback-function/3865/5)
+- [Panes - Streamz](https://panel.holoviz.org/reference/panes/Streamz.html#panes-gallery-streamz)
+- [Panel - LiteralInput](https://panel.holoviz.org/reference/widgets/LiteralInput.html#widgets-gallery-literalinput)

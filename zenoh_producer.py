@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@author: luk
+source: https://zenoh.io/docs/getting-started/first-app/
+"""
 from zenoh import Zenoh
 import random
 import time

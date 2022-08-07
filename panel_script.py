@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Apr 21 19:10:07 2022
 @author: luk
 """
 import zenoh
 from iotdb.Session import Session
 from datetime import datetime
 import panel as pn
-
 
 #Settings
 #Zenoh
@@ -26,7 +24,7 @@ pn.state.template.param.update(site="Apache Con", title="Introduction to data ap
                                sidebar_width=200, accent_base_color=ACCENT, 
                                header_background=ACCENT, font="Montserrat")
 
-# Zenoh Retrieve values
+# Zenoh retrieve values and save values to IoTDB
 def retrieve():
     results = w.get('/myfactory/machine1/temp')
     temperature = results[0].value.get_content()
@@ -40,6 +38,7 @@ def retrieve():
     df = result.todf()
     session.close()
     values = df['root.myfactory.machine1.temperature'].values.tolist()
+    #TODO convert timevalues to datetime values
     timevalues = df.Time.values.tolist()
     return temperature, values, timevalues
 
@@ -48,19 +47,18 @@ temperature = 0
 if not retrieve() == None:
     temperature, values, timevalues = retrieve()
     
-# invisible slider to jscallback
+# invisible slider and literal to jscallback
 slider = pn.widgets.FloatSlider(visible=False)
 literal_input = pn.widgets.LiteralInput(name='Literal Input (dict)', 
         value={'key': [1, 2, 3]}, type=dict, visible=False)
 # Stream function
 def stream():
-    #gauge invisible slider to update gauge
     temperature, values, timevalues = retrieve()
     literal_dict = {str(l):v for l, v in zip(timevalues, values)}
     #print('in python', literal_dict)
     literal_input.value = literal_dict
     slider.value = temperature
-    # this step triggers internally the js_callback attached to the slider 
+    # this step triggers internally the js_callback attached to the slider / literal input 
     
 gauge = {
     'tooltip': {
