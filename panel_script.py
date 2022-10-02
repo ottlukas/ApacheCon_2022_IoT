@@ -130,5 +130,5 @@ literal_input.jscallback(args={'echart': echart_pane,}, value="""
     )
 
 # side panel with logo and "Settings"
-pn.pane.JPG("https://apache.org/img/asf-estd-1999-logo.jpg", sizing_mode="scale_width", embed=False).servable(area="sidebar")
+pn.pane.JPG("asf-estd-1999-logo.jpg", sizing_mode="scale_width", embed=False).servable(area="sidebar")
 pn.panel("# Settings").servable(area="sidebar")
