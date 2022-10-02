@@ -5,6 +5,7 @@ This is a short Python script to show an end to end connection from Zenoh IoT Pr
 
 Install and execute
 1) [Zenoh Installation](https://zenoh.io/docs/getting-started/installation/)
+    INFO: Zenho upgrade 30 September 2022 and API changed! (This is not yet included here)
 
 2) [Zenoh First App](https://zenoh.io/docs/getting-started/first-app/)
 
