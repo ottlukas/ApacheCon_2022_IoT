@@ -20,7 +20,7 @@ if __name__ == "__main__":
     session = Session(ip, port_, username_, password_)
     session.open(False)
     datetime_iso = datetime.fromtimestamp(results[0].timestamp.time).isoformat()
-    #print(datetime_iso)
+    print(datetime_iso)
     sql = "INSERT INTO root.myfactory.machine1(timestamp,temperature) values("+str(datetime_iso)+", "+str(results[0].value.get_content())+")"
     #print(sql)
     session.execute_non_query_statement(sql)
