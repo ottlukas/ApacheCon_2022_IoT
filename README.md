@@ -5,14 +5,17 @@ This is a short Python script to show an end to end connection from Zenoh IoT Pr
 
 Install and execute
 1) [Zenoh Installation](https://zenoh.io/docs/getting-started/installation/)
-    INFO: Zenoh upgrade 30 September 2022 and API changed! (This is not yet included here)
+    This project uses the Zenoh 1.0.x API. Install the Python library using:
+    ```bash
+    pip install eclipse-zenoh==1.3.4
+    ```
 
 2) [Zenoh First App](https://zenoh.io/docs/getting-started/first-app/)
 
     Adapt the Producer topic to the one in the panel_script py or the other way around. 
-    - "'/myhome/kitchen/temp'"
+    - "'/myfactory/machine1/temp'"
     Same for the Zenoh Broker
-    - "'/myhome/**'"
+    - "'/myfactory/**'"
 
     Start zenoh broker:
     ```
@@ -41,6 +44,7 @@ Install and execute
     Used Python packages:
     ```
     import zenoh
+    import json
     from iotdb.Session import Session
     from datetime import datetime
     import panel as pn
@@ -48,10 +52,4 @@ Install and execute
 5) Execute in a Shell / Terminal (whith running Zenoh Broker and Apache IoTDB): 
     ``` 
     panel serve 'panel_script.py' --autoreload --show 
-    ``` 
-
-
-
-
-
-
+    ```

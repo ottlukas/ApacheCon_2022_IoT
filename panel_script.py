@@ -12,7 +12,10 @@ import panel as pn
 #Settings
 #Zenoh
 conf = zenoh.Config()
-conf.insert_json5(zenoh.config.CONNECT_KEY, json.dumps(["tcp/127.0.0.1:7447"]))
+# Set mode to client
+conf.insert_json5("mode", json.dumps("client"))
+# Corrected configuration key for connect endpoints
+conf.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
 # It's better to manage the session lifecycle, e.g. with `with zenoh.open(conf) as session: ...`
 # or by explicitly closing it on app shutdown. For now, opening globally.
 # A Panel 'on_unload' callback would be a good place for session.close().

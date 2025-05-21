@@ -24,7 +24,10 @@ def listener(sample):
 
 if __name__ == "__main__":
     conf = zenoh.Config()
-    conf.insert_json5(zenoh.config.CONNECT_KEY, json.dumps(["tcp/127.0.0.1:7447"]))
+    # Set mode to client
+    conf.insert_json5("mode", json.dumps("client"))
+    # Corrected configuration key for connect endpoints
+    conf.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
     with zenoh.open(conf) as session:
         sub = session.declare_subscriber('/myfactory/machine1/temp', listener)
         # Keep the subscriber alive, e.g., by waiting for input or a long sleep
