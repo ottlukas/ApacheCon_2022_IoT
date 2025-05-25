@@ -53,3 +53,6 @@ Install and execute
     ``` 
     panel serve 'panel_script.py' --autoreload --show 
     ```
+
+## Code Quality
+The Python code in this repository has been formatted and linted using Pylint to ensure adherence to common Python coding standards and improve readability. This helps in maintaining a clean and understandable codebase.

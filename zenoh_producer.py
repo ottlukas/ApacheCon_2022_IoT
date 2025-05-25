@@ -1,32 +1,36 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+# TODO: Add module docstring
 @author: luk
 source: https://zenoh.io/docs/getting-started/first-app/
 """
-import zenoh
 import json
 import random
 import time
 
+import zenoh
+
 random.seed()
 
 def read_temp():
+    """Reads a random temperature."""
     return random.randint(15, 30)
 
-def run_sensor_loop(session):
+def run_sensor_loop(sensor_session):
+    """Runs a loop to read and produce temperature data."""
     # read and produce a temperature every second
     while True:
-        t = read_temp()
-        session.put('/myfactory/machine1/temp', t)
-        print (t)
+        temp = read_temp()
+        sensor_session.put('/myfactory/machine1/temp', temp)
+        print(temp)
         time.sleep(15)
 
 if __name__ == "__main__":
-    conf = zenoh.Config()
+    config = zenoh.Config()
     # Set mode to client
-    conf.insert_json5("mode", json.dumps("client"))
+    config.insert_json5("mode", json.dumps("client"))
     # Corrected configuration key for connect endpoints
-    conf.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
-    with zenoh.open(conf) as session:
-        run_sensor_loop(session)
+    config.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
+    with zenoh.open(config) as open_session:
+        run_sensor_loop(open_session)
