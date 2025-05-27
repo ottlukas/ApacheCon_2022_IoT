@@ -8,6 +8,7 @@ source: https://zenoh.io/docs/getting-started/first-app/
 import json
 import random
 import time
+import os
 
 import zenoh
 
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     # Set mode to client
     config.insert_json5("mode", json.dumps("client"))
     # Corrected configuration key for connect endpoints
-    config.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
+    zenoh_router_endpoint = os.environ.get("ZENOH_ROUTER_ENDPOINT", "tcp/127.0.0.1:7447")
+    config.insert_json5("connect/endpoints", json.dumps([zenoh_router_endpoint]))
     with zenoh.open(config) as open_session:
         run_sensor_loop(open_session)

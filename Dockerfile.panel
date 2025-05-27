@@ -1,0 +1,23 @@
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim-buster
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the panel directory contents into the container at /app/panel/
+# This assumes panel_app.py (formerly panel_script.py) and requirements.txt are in a 'panel' subdirectory
+# in the build context (project root).
+COPY panel/ /app/panel/
+
+# Install any needed Python packages specified in requirements.txt
+# This also assumes requirements.txt is in the 'panel' subdirectory copied above.
+RUN pip install --no-cache-dir -r /app/panel/requirements.txt
+
+# Set environment variables (these will be overridden by docker-compose if defined there)
+ENV ZENOH_ROUTER_ENDPOINT="tcp://localhost:7447"
+ENV IOTDB_HOST="localhost"
+ENV IOTDB_PORT="6667"
+
+# Define the command to run your application
+# This assumes panel_script.py will be renamed to panel_app.py and be in the panel directory.
+CMD ["python", "/app/panel/panel_app.py"]

@@ -3,6 +3,7 @@
 """
 import json
 import time
+import os
 
 import zenoh
 
@@ -34,7 +35,8 @@ if __name__ == "__main__":
     config.insert_json5("mode", json.dumps("client"))
     # Corrected configuration key for connect endpoints
     # pylint: disable=line-too-long
-    config.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
+    zenoh_router_endpoint = os.environ.get("ZENOH_ROUTER_ENDPOINT", "tcp/127.0.0.1:7447")
+    config.insert_json5("connect/endpoints", json.dumps([zenoh_router_endpoint]))
     # pylint: enable=line-too-long
     with zenoh.open(config) as open_session:
         subscriber = open_session.declare_subscriber('/myfactory/machine1/temp', sample_listener)

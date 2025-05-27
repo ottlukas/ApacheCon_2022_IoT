@@ -6,6 +6,7 @@
 """
 import json
 from datetime import datetime
+import os
 
 import panel as pn
 import zenoh
@@ -18,15 +19,16 @@ CONF = zenoh.Config()
 # Set mode to client
 CONF.insert_json5("mode", json.dumps("client"))
 # Corrected configuration key for connect endpoints
-CONF.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
+ZENOH_ROUTER_ENDPOINT = os.environ.get("ZENOH_ROUTER_ENDPOINT", "tcp/127.0.0.1:7447")
+CONF.insert_json5("connect/endpoints", json.dumps([ZENOH_ROUTER_ENDPOINT]))
 # It's better to manage the session lifecycle, e.g. with `with zenoh.open(conf) as session: ...`
 # or by explicitly closing it on app shutdown. For now, opening globally.
 # A Panel 'on_unload' callback would be a good place for session.close().
 ZENOH_SESSION = zenoh.open(CONF)
 
 # IoTDB
-IP = "127.0.0.1"
-PORT = "6667"
+IP = os.environ.get("IOTDB_HOST", "127.0.0.1")
+PORT = os.environ.get("IOTDB_PORT", "6667")
 USERNAME = "root"
 PASSWORD = "root"
 # Panel
@@ -37,6 +39,10 @@ pn.state.template.param.update(site="Apache Con", title="Introduction to data ap
                                sidebar_width=200, accent_base_color=ACCENT_COLOR,
                                header_background=ACCENT_COLOR, font="Montserrat")
 # pylint: enable=line-too-long
+
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+logo_path = os.path.join(script_dir, "asf-estd-1999-logo.jpg")
 
 # Zenoh retrieve values and save values to IoTDB
 def retrieve_data():
@@ -196,6 +202,6 @@ literal_input_widget.jscallback(args={'echart': echart_pane_widget,}, value="""
 
 # side panel with logo and "Settings"
 # pylint: disable=line-too-long
-pn.pane.JPG("asf-estd-1999-logo.jpg", sizing_mode="scale_width", embed=False).servable(area="sidebar")
+pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=False).servable(area="sidebar")
 # pylint: enable=line-too-long
 pn.panel("# Settings").servable(area="sidebar")
