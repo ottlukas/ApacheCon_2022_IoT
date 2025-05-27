@@ -1,0 +1,92 @@
+2025-05-27 07:23:27,305 [main] INFO  o.a.i.c.c.ConfigNodeDescriptor:109 - Start to read config file file:/iotdb/sbin/../conf/iotdb-common.properties 
+2025-05-27 07:23:27,318 [main] INFO  o.a.i.c.c.ConfigNodeDescriptor:131 - start reading ConfigNode conf file: file:/iotdb/sbin/../conf/iotdb-confignode.properties 
+2025-05-27 07:23:27,402 [main] INFO  o.a.i.c.s.ConfigNode:108 - IoTDB-ConfigNode environment variables: 
+	CONFIGNODE_HOME=/iotdb/sbin/..;
+	CONFIGNODE_CONF=/iotdb/sbin/../conf; 
+2025-05-27 07:23:27,403 [main] INFO  o.a.i.c.s.ConfigNode:112 - IoTDB-ConfigNode default charset is: UTF-8 
+2025-05-27 07:23:27,407 [main] INFO  o.a.i.c.s.ConfigNodeCommandLine:68 - Running mode -s 
+2025-05-27 07:23:27,408 [main] INFO  o.a.i.c.s.ConfigNodeCommandLine:72 - Starting IoTDB 1.3.2 (Build: aa0ff4a) 
+2025-05-27 07:23:27,414 [main] INFO  o.a.i.c.c.ConfigNodeStartupCheck:65 - configNode port check successful. 
+2025-05-27 07:23:27,415 [main] INFO  o.a.i.c.s.StartupChecks:50 - Start JMX locally. 
+2025-05-27 07:23:27,417 [main] INFO  o.a.i.c.s.StartupChecks:78 - JDK version is 11. 
+2025-05-27 07:23:27,417 [main] INFO  o.a.i.c.s.StartupChecks:84 - JVM version is OpenJDK 64-Bit Server VM 11.0.24+8. 
+2025-05-27 07:23:27,419 [main] INFO  o.a.i.c.c.ConfigNodeStartupCheck:201 - Make dirs: /iotdb/sbin/../data/confignode/system 
+2025-05-27 07:23:27,420 [main] INFO  o.a.i.c.c.ConfigNodeStartupCheck:201 - Make dirs: /iotdb/sbin/../data/confignode/consensus 
+2025-05-27 07:23:27,429 [main] INFO  o.a.i.c.s.ConfigNode:120 - Activating IoTDB-ConfigNode... 
+2025-05-27 07:23:27,433 [main] INFO  o.a.i.c.s.RegisterManager:54 - The JMX ServerService service is started successfully, which takes 1 ms. 
+2025-05-27 07:23:27,809 [main] INFO  o.a.i.c.p.c.PipeConfig:271 - PipeHardlinkBaseDirName: pipe 
+2025-05-27 07:23:27,809 [main] INFO  o.a.i.c.p.c.PipeConfig:272 - PipeHardlinkTsFileDirName: tsfile 
+2025-05-27 07:23:27,810 [main] INFO  o.a.i.c.p.c.PipeConfig:273 - PipeHardlinkWALDirName: wal 
+2025-05-27 07:23:27,810 [main] INFO  o.a.i.c.p.c.PipeConfig:274 - PipeHardLinkWALEnabled: false 
+2025-05-27 07:23:27,810 [main] INFO  o.a.i.c.p.c.PipeConfig:276 - PipeDataStructureTabletRowSize: 2048 
+2025-05-27 07:23:27,810 [main] INFO  o.a.i.c.p.c.PipeConfig:277 - PipeDataStructureTabletMemoryBlockAllocationRejectThreshold: 0.4 
+2025-05-27 07:23:27,811 [main] INFO  o.a.i.c.p.c.PipeConfig:281 - PipeSubtaskExecutorMaxThreadNum: 2 
+2025-05-27 07:23:27,811 [main] INFO  o.a.i.c.p.c.PipeConfig:282 - PipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount: 10000 
+2025-05-27 07:23:27,811 [main] INFO  o.a.i.c.p.c.PipeConfig:285 - PipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration: 10000 
+2025-05-27 07:23:27,812 [main] INFO  o.a.i.c.p.c.PipeConfig:288 - PipeSubtaskExecutorPendingQueueMaxBlockingTimeMs: 1000 
+2025-05-27 07:23:27,812 [main] INFO  o.a.i.c.p.c.PipeConfig:291 - PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: 20 
+2025-05-27 07:23:27,812 [main] INFO  o.a.i.c.p.c.PipeConfig:295 - PipeExtractorAssignerDisruptorRingBufferSize: 65536 
+2025-05-27 07:23:27,813 [main] INFO  o.a.i.c.p.c.PipeConfig:298 - PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: 50 
+2025-05-27 07:23:27,813 [main] INFO  o.a.i.c.p.c.PipeConfig:301 - PipeExtractorMatcherCacheSize: 1024 
+2025-05-27 07:23:27,813 [main] INFO  o.a.i.c.p.c.PipeConfig:303 - PipeConnectorHandshakeTimeoutMs: 10000 
+2025-05-27 07:23:27,814 [main] INFO  o.a.i.c.p.c.PipeConfig:304 - PipeConnectorTransferTimeoutMs: 900000 
+2025-05-27 07:23:27,814 [main] INFO  o.a.i.c.p.c.PipeConfig:305 - PipeConnectorReadFileBufferSize: 8388608 
+2025-05-27 07:23:27,815 [main] INFO  o.a.i.c.p.c.PipeConfig:306 - PipeConnectorRetryIntervalMs: 1000 
+2025-05-27 07:23:27,815 [main] INFO  o.a.i.c.p.c.PipeConfig:307 - PipeConnectorPendingQueueSize: 256 
+2025-05-27 07:23:27,815 [main] INFO  o.a.i.c.p.c.PipeConfig:308 - PipeConnectorRPCThriftCompressionEnabled: false 
+2025-05-27 07:23:27,816 [main] INFO  o.a.i.c.p.c.PipeConfig:311 - PipeLeaderCacheMemoryUsagePercentage: 0.1 
+2025-05-27 07:23:27,816 [main] INFO  o.a.i.c.p.c.PipeConfig:313 - PipeListeningQueueTransferSnapshotThreshold: 1000 
+2025-05-27 07:23:27,816 [main] INFO  o.a.i.c.p.c.PipeConfig:316 - PipeSnapshotExecutionMaxBatchSize: 1000 
+2025-05-27 07:23:27,817 [main] INFO  o.a.i.c.p.c.PipeConfig:318 - PipeAsyncConnectorSelectorNumber: 4 
+2025-05-27 07:23:27,817 [main] INFO  o.a.i.c.p.c.PipeConfig:319 - PipeAsyncConnectorMaxClientNumber: 16 
+2025-05-27 07:23:27,817 [main] INFO  o.a.i.c.p.c.PipeConfig:321 - SeperatedPipeHeartbeatEnabled: true 
+2025-05-27 07:23:27,818 [main] INFO  o.a.i.c.p.c.PipeConfig:322 - PipeHeartbeatIntervalSecondsForCollectingPipeMeta: 100 
+2025-05-27 07:23:27,818 [main] INFO  o.a.i.c.p.c.PipeConfig:325 - PipeMetaSyncerInitialSyncDelayMinutes: 3 
+2025-05-27 07:23:27,818 [main] INFO  o.a.i.c.p.c.PipeConfig:327 - PipeMetaSyncerSyncIntervalMinutes: 3 
+2025-05-27 07:23:27,819 [main] INFO  o.a.i.c.p.c.PipeConfig:328 - PipeMetaSyncerAutoRestartPipeCheckIntervalRound: 1 
+2025-05-27 07:23:27,819 [main] INFO  o.a.i.c.p.c.PipeConfig:331 - PipeAutoRestartEnabled: true 
+2025-05-27 07:23:27,819 [main] INFO  o.a.i.c.p.c.PipeConfig:333 - PipeAirGapReceiverEnabled: false 
+2025-05-27 07:23:27,819 [main] INFO  o.a.i.c.p.c.PipeConfig:334 - PipeAirGapReceiverPort: 9780 
+2025-05-27 07:23:27,820 [main] INFO  o.a.i.c.p.c.PipeConfig:336 - PipeMaxAllowedHistoricalTsFilePerDataRegion: 100 
+2025-05-27 07:23:27,820 [main] INFO  o.a.i.c.p.c.PipeConfig:339 - PipeMaxAllowedPendingTsFileEpochPerDataRegion: 2 
+2025-05-27 07:23:27,820 [main] INFO  o.a.i.c.p.c.PipeConfig:342 - PipeMaxAllowedPinnedMemTableCount: 50 
+2025-05-27 07:23:27,821 [main] INFO  o.a.i.c.p.c.PipeConfig:343 - PipeMaxAllowedLinkedTsFileCount: 100 
+2025-05-27 07:23:27,821 [main] INFO  o.a.i.c.p.c.PipeConfig:344 - PipeStuckRestartIntervalSeconds: 120 
+2025-05-27 07:23:27,821 [main] INFO  o.a.i.c.p.c.PipeConfig:346 - PipeMetaReportMaxLogNumPerRound: 10 
+2025-05-27 07:23:27,821 [main] INFO  o.a.i.c.p.c.PipeConfig:347 - PipeMetaReportMaxLogIntervalRounds: 36 
+2025-05-27 07:23:27,822 [main] INFO  o.a.i.c.p.c.PipeConfig:348 - PipeTsFilePinMaxLogNumPerRound: 10 
+2025-05-27 07:23:27,822 [main] INFO  o.a.i.c.p.c.PipeConfig:349 - PipeTsFilePinMaxLogIntervalRounds: 90 
+2025-05-27 07:23:27,822 [main] INFO  o.a.i.c.p.c.PipeConfig:350 - PipeWalPinMaxLogNumPerRound: 10 
+2025-05-27 07:23:27,823 [main] INFO  o.a.i.c.p.c.PipeConfig:351 - PipeWalPinMaxLogIntervalRounds: 90 
+2025-05-27 07:23:27,823 [main] INFO  o.a.i.c.p.c.PipeConfig:353 - PipeMemoryManagementEnabled: true 
+2025-05-27 07:23:27,823 [main] INFO  o.a.i.c.p.c.PipeConfig:354 - PipeMemoryAllocateMaxRetries: 10 
+2025-05-27 07:23:27,823 [main] INFO  o.a.i.c.p.c.PipeConfig:355 - PipeMemoryAllocateRetryIntervalInMs: 1000 
+2025-05-27 07:23:27,823 [main] INFO  o.a.i.c.p.c.PipeConfig:357 - PipeMemoryAllocateMinSizeInBytes: 32 
+2025-05-27 07:23:27,824 [main] INFO  o.a.i.c.p.c.PipeConfig:358 - PipeMemoryAllocateForTsFileSequenceReaderInBytes: 2097152 
+2025-05-27 07:23:27,824 [main] INFO  o.a.i.c.p.c.PipeConfig:361 - PipeMemoryExpanderIntervalSeconds: 180 
+2025-05-27 07:23:27,825 [main] INFO  o.a.i.c.p.c.PipeConfig:363 - TwoStageAggregateMaxCombinerLiveTimeInMs: 480000 
+2025-05-27 07:23:27,825 [main] INFO  o.a.i.c.p.c.PipeConfig:366 - TwoStageAggregateDataRegionInfoCacheTimeInMs: 180000 
+2025-05-27 07:23:27,825 [main] INFO  o.a.i.c.p.c.PipeConfig:369 - TwoStageAggregateSenderEndPointsCacheInMs: 180000 
+2025-05-27 07:23:27,837 [main] INFO  o.a.i.c.p.r.IoTDBReceiverAgent:118 - Clean pipe receiver dir /iotdb/sbin/../data/confignode/system/pipe/receiver successfully. 
+2025-05-27 07:23:27,839 [main] INFO  o.a.i.c.p.r.IoTDBReceiverAgent:125 - Create pipe receiver dir /iotdb/sbin/../data/confignode/system/pipe/receiver successfully. 
+2025-05-27 07:23:27,839 [main] INFO  o.a.i.c.m.p.a.r.PipeConfigNodeRuntimeAgent:63 - PipeRuntimeConfigNodeAgent started 
+2025-05-27 07:23:27,840 [main] INFO  o.a.i.c.s.RegisterManager:54 - The Pipe Runtime Config Node Agent service is started successfully, which takes 35 ms. 
+2025-05-27 07:23:27,840 [main] INFO  o.a.i.c.s.ConfigNode:256 - Successfully setup internal services. 
+2025-05-27 07:23:27,913 [main] INFO  o.a.i.c.a.a.BasicAuthorizer$InstanceHolder:104 - Authorizer provider class: org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer 
+2025-05-27 07:23:27,926 [main] INFO  o.a.i.c.a.u.LocalFileUserAccessor:401 - user info dir /iotdb/data/confignode/system/users is created 
+2025-05-27 07:23:28,076 [main] INFO  o.a.i.c.a.u.BasicUserManager:130 - Admin initialized 
+2025-05-27 07:23:28,084 [main] INFO  o.a.i.c.a.r.LocalFileRoleAccessor:272 - role info dir /iotdb/data/confignode/system/roles is created 
+2025-05-27 07:23:28,294 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:170 - new cached thread pool: ConfigNode-Manager-Recovery 
+2025-05-27 07:23:28,366 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: IoTDB-Region-Maintainer 
+2025-05-27 07:23:28,501 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:233 - new scheduled thread pool: CQ-Scheduler 
+2025-05-27 07:23:28,517 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:137 - new single thread pool: Pipe-Runtime-Procedure-Submitter 
+2025-05-27 07:23:28,525 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: Pipe-Runtime-Meta-Syncer 
+2025-05-27 07:23:28,528 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: Pipe-Runtime-Heartbeat 
+2025-05-27 07:23:28,537 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: Subscription-Runtime-Meta-Syncer 
+2025-05-27 07:23:28,567 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: Cluster-Heartbeat-Service 
+2025-05-27 07:23:28,569 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: Cluster-LoadStatistics-Service 
+2025-05-27 07:23:28,575 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: Cluster-Event-Service 
+2025-05-27 07:23:28,577 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:71 - new fixed thread pool: Cluster-LoadStatistics-Publisher, thread number: 5 
+2025-05-27 07:23:28,752 [main] INFO  o.a.i.c.c.IoTDBThreadPoolFactory:213 - new single scheduled thread pool: Cluster-RetryFailedTasks-Service 
+2025-05-27 07:23:28,757 [main] INFO  o.a.i.c.s.ConfigNode:307 - Successfully initialize ConfigManager. 
+2025-05-27 07:23:28,757 [main] INFO  o.a.i.c.s.ConfigNode:168 - The current IoTDB-ConfigNode is now starting as the Seed-ConfigNode. 
