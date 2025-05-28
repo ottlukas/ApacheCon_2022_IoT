@@ -1,0 +1,134 @@
+Collecting eclipse-zenoh==1.3.4 (from -r /app/panel/requirements.txt (line 1))
+  Downloading eclipse_zenoh-1.3.4-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+Collecting apache-iotdb (from -r /app/panel/requirements.txt (line 2))
+  Downloading apache_iotdb-2.0.2-py3-none-any.whl.metadata (18 kB)
+Collecting panel (from -r /app/panel/requirements.txt (line 3))
+  Downloading panel-1.7.1-py3-none-any.whl.metadata (15 kB)
+Collecting thrift>=0.14.1 (from apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading thrift-0.22.0.tar.gz (62 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting pandas>=1.0.0 (from apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading pandas-2.2.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (89 kB)
+Collecting numpy>=1.0.0 (from apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading numpy-2.2.6-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (62 kB)
+Collecting sqlalchemy>=1.4 (from apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading sqlalchemy-2.0.41-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (9.6 kB)
+Collecting sqlalchemy-utils>=0.37.8 (from apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading SQLAlchemy_Utils-0.41.2-py3-none-any.whl.metadata (4.2 kB)
+Collecting bleach (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading bleach-6.2.0-py3-none-any.whl.metadata (30 kB)
+Collecting bokeh<3.8.0,>=3.5.0 (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading bokeh-3.7.3-py3-none-any.whl.metadata (12 kB)
+Collecting linkify-it-py (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading linkify_it_py-2.0.3-py3-none-any.whl.metadata (8.5 kB)
+Collecting markdown (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading markdown-3.8-py3-none-any.whl.metadata (5.1 kB)
+Collecting markdown-it-py (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading markdown_it_py-3.0.0-py3-none-any.whl.metadata (6.9 kB)
+Collecting mdit-py-plugins (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading mdit_py_plugins-0.4.2-py3-none-any.whl.metadata (2.8 kB)
+Requirement already satisfied: packaging in /usr/local/lib/python3.10/dist-packages (from panel->-r /app/panel/requirements.txt (line 3)) (25.0)
+Collecting param<3.0,>=2.1.0 (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading param-2.2.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting pyviz-comms>=2.0.0 (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading pyviz_comms-3.0.4-py3-none-any.whl.metadata (7.7 kB)
+Requirement already satisfied: requests in /usr/local/lib/python3.10/dist-packages (from panel->-r /app/panel/requirements.txt (line 3)) (2.32.3)
+Collecting tqdm (from panel->-r /app/panel/requirements.txt (line 3))
+  Downloading tqdm-4.67.1-py3-none-any.whl.metadata (57 kB)
+Requirement already satisfied: typing-extensions in /usr/local/lib/python3.10/dist-packages (from panel->-r /app/panel/requirements.txt (line 3)) (4.13.2)
+Collecting Jinja2>=2.9 (from bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting contourpy>=1.2 (from bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading contourpy-1.3.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.5 kB)
+Collecting narwhals>=1.13 (from bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading narwhals-1.41.0-py3-none-any.whl.metadata (11 kB)
+Collecting pillow>=7.1.0 (from bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading pillow-11.2.1-cp310-cp310-manylinux_2_28_x86_64.whl.metadata (8.9 kB)
+Collecting PyYAML>=3.10 (from bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading PyYAML-6.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.1 kB)
+Requirement already satisfied: tornado>=6.2 in /usr/local/lib/python3.10/dist-packages (from bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3)) (6.4.2)
+Collecting xyzservices>=2021.09.1 (from bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading xyzservices-2025.4.0-py3-none-any.whl.metadata (4.3 kB)
+Collecting MarkupSafe>=2.0 (from Jinja2>=2.9->bokeh<3.8.0,>=3.5.0->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading MarkupSafe-3.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.0 kB)
+Collecting python-dateutil>=2.8.2 (from pandas>=1.0.0->apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting pytz>=2020.1 (from pandas>=1.0.0->apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading pytz-2025.2-py2.py3-none-any.whl.metadata (22 kB)
+Collecting tzdata>=2022.7 (from pandas>=1.0.0->apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading tzdata-2025.2-py2.py3-none-any.whl.metadata (1.4 kB)
+Requirement already satisfied: six>=1.5 in /usr/lib/python3/dist-packages (from python-dateutil>=2.8.2->pandas>=1.0.0->apache-iotdb->-r /app/panel/requirements.txt (line 2)) (1.16.0)
+Collecting greenlet>=1 (from sqlalchemy>=1.4->apache-iotdb->-r /app/panel/requirements.txt (line 2))
+  Downloading greenlet-3.2.2-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (4.1 kB)
+Collecting webencodings (from bleach->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading webencodings-0.5.1-py2.py3-none-any.whl.metadata (2.1 kB)
+Collecting uc-micro-py (from linkify-it-py->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading uc_micro_py-1.0.3-py3-none-any.whl.metadata (2.0 kB)
+Collecting mdurl~=0.1 (from markdown-it-py->panel->-r /app/panel/requirements.txt (line 3))
+  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+Requirement already satisfied: charset-normalizer<4,>=2 in /usr/local/lib/python3.10/dist-packages (from requests->panel->-r /app/panel/requirements.txt (line 3)) (3.4.2)
+Requirement already satisfied: idna<4,>=2.5 in /usr/local/lib/python3.10/dist-packages (from requests->panel->-r /app/panel/requirements.txt (line 3)) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /usr/local/lib/python3.10/dist-packages (from requests->panel->-r /app/panel/requirements.txt (line 3)) (2.4.0)
+Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.10/dist-packages (from requests->panel->-r /app/panel/requirements.txt (line 3)) (2025.4.26)
+Downloading eclipse_zenoh-1.3.4-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.6/8.6 MB 37.7 MB/s eta 0:00:00
+Downloading apache_iotdb-2.0.2-py3-none-any.whl (155 kB)
+Downloading panel-1.7.1-py3-none-any.whl (29.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 29.5/29.5 MB 25.6 MB/s eta 0:00:00
+Downloading bokeh-3.7.3-py3-none-any.whl (7.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.0/7.0 MB 152.5 MB/s eta 0:00:00
+Downloading param-2.2.0-py3-none-any.whl (119 kB)
+Downloading contourpy-1.3.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (325 kB)
+Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading MarkupSafe-3.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (20 kB)
+Downloading narwhals-1.41.0-py3-none-any.whl (357 kB)
+Downloading numpy-2.2.6-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.8/16.8 MB 32.8 MB/s eta 0:00:00
+Downloading pandas-2.2.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.1/13.1 MB 39.5 MB/s eta 0:00:00
+Downloading pillow-11.2.1-cp310-cp310-manylinux_2_28_x86_64.whl (4.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.6/4.6 MB 118.7 MB/s eta 0:00:00
+Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Downloading pytz-2025.2-py2.py3-none-any.whl (509 kB)
+Downloading pyviz_comms-3.0.4-py3-none-any.whl (83 kB)
+Downloading PyYAML-6.0.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (751 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 751.2/751.2 kB 63.5 MB/s eta 0:00:00
+Downloading sqlalchemy-2.0.41-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 26.0 MB/s eta 0:00:00
+Downloading greenlet-3.2.2-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (580 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 580.6/580.6 kB 50.8 MB/s eta 0:00:00
+Downloading SQLAlchemy_Utils-0.41.2-py3-none-any.whl (93 kB)
+Downloading tzdata-2025.2-py2.py3-none-any.whl (347 kB)
+Downloading xyzservices-2025.4.0-py3-none-any.whl (90 kB)
+Downloading bleach-6.2.0-py3-none-any.whl (163 kB)
+Downloading linkify_it_py-2.0.3-py3-none-any.whl (19 kB)
+Downloading markdown-3.8-py3-none-any.whl (106 kB)
+Downloading markdown_it_py-3.0.0-py3-none-any.whl (87 kB)
+Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+Downloading mdit_py_plugins-0.4.2-py3-none-any.whl (55 kB)
+Downloading tqdm-4.67.1-py3-none-any.whl (78 kB)
+Downloading uc_micro_py-1.0.3-py3-none-any.whl (6.2 kB)
+Downloading webencodings-0.5.1-py2.py3-none-any.whl (11 kB)
+Building wheels for collected packages: thrift
+  DEPRECATION: Building 'thrift' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'thrift'. Discussion can be found at https://github.com/pypa/pip/issues/6334
+  Building wheel for thrift (setup.py): started
+  Building wheel for thrift (setup.py): finished with status 'done'
+  Created wheel for thrift: filename=thrift-0.22.0-py3-none-any.whl size=156851 sha256=fa903563eaff9df2a7e52f8e57fcd2ce1c081b34f2bcb2d17b838a06052e4e13
+  Stored in directory: /home/jules/.cache/pip/wheels/24/08/7b/c6ef6213be0b57893348ce644fba6866c451d20bd152f096c3
+Successfully built thrift
+Installing collected packages: webencodings, thrift, pytz, xyzservices, uc-micro-py, tzdata, tqdm, PyYAML, python-dateutil, pillow, param, numpy, narwhals, mdurl, MarkupSafe, markdown, greenlet, eclipse-zenoh, bleach, sqlalchemy, pyviz-comms, pandas, markdown-it-py, linkify-it-py, Jinja2, contourpy, sqlalchemy-utils, mdit-py-plugins, bokeh, panel, apache-iotdb
+  WARNING: The script tqdm is installed in '/home/swebot/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts f2py and numpy-config are installed in '/home/swebot/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script markdown_py is installed in '/home/swebot/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script markdown-it is installed in '/home/swebot/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script bokeh is installed in '/home/swebot/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script panel is installed in '/home/swebot/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+
+Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.2 PyYAML-6.0.2 apache-iotdb-2.0.2 bleach-6.2.0 bokeh-3.7.3 contourpy-1.3.2 eclipse-zenoh-1.3.4 greenlet-3.2.2 linkify-it-py-2.0.3 markdown-3.8 markdown-it-py-3.0.0 mdit-py-plugins-0.4.2 mdurl-0.1.2 narwhals-1.41.0 numpy-2.2.6 pandas-2.2.3 panel-1.7.1 param-2.2.0 pillow-11.2.1 python-dateutil-2.9.0.post0 pytz-2025.2 pyviz-comms-3.0.4 sqlalchemy-2.0.41 sqlalchemy-utils-0.41.2 thrift-0.22.0 tqdm-4.67.1 tzdata-2025.2 uc-micro-py-1.0.3 webencodings-0.5.1 xyzservices-2025.4.0
