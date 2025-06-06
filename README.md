@@ -29,7 +29,9 @@ Before you begin, ensure you have the following installed on your system:
 * **Java 8 or higher (JDK):** Required for Apache IoTDB.
     * **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install openjdk-11-jdk` (or `openjdk-17-jdk`)
     * **macOS:** `brew install openjdk@11` (or `openjdk@17`) and follow instructions to set `JAVA_HOME`.
-    * **Windows:** Download installer from [oracle.com/java/technologies/downloads/](https://www.oracle.com/java/technologies/downloads/)
+    * **Windows:** We recommend Azul Zulu OpenJDK or Amazon Corretto.
+      * Azul Zulu: [https://www.azul.com/downloads/?package=jdk](https://www.azul.com/downloads/?package=jdk)
+      * Amazon Corretto: [https://aws.amazon.com/corretto/](https://aws.amazon.com/corretto/)
 * **`curl` (optional, for Zenoh healthcheck):**
     * Usually pre-installed on Linux/macOS.
     * **Windows:** Available via Git Bash or can be installed separately.
@@ -61,6 +63,7 @@ Then, run the Zenoh router:
 ```bash
 ./zenohd-linux-x86_64
 ```
+> **Note:** `zenohd-linux-x86_64` is a pre-compiled binary for Linux. Windows users would need a corresponding Windows binary if available, or to build Zenoh from source. This repository currently only provides the Linux binary.
 
 You should see log output indicating the router has started, typically listening on `0.0.0.0:7447`.
 
@@ -83,6 +86,7 @@ Download Apache IoTDB (if you haven't already). The script will place it in a ve
 ```bash
 ./download_iotdb.sh # You might need to chmod +x download_iotdb.sh first
 ```
+> **Windows Note:** The `./download_iotdb.sh` script is for Linux/macOS. Windows users might need to run this script via WSL (Windows Subsystem for Linux) or Git Bash. Alternatively, you can download Apache IoTDB manually from the [Apache IoTDB website](https://iotdb.apache.org/download/) and extract it into the `iotdb` directory.
 
 Go into the IoTDB server directory (adjust version if needed):
 ```bash
@@ -91,9 +95,16 @@ cd apache-iotdb-*-server-bin # Or the specific version you downloaded
 
 Start the IoTDB server:
 ```bash
+# On Linux/macOS:
 ./sbin/start-server.sh -c # Starts ConfigNode
 ./sbin/start-server.sh -d # Starts DataNode
+
+# On Windows (in Command Prompt or PowerShell, from the apache-iotdb-X.X.X-server-bin directory):
+# sbin\start-server.bat -c
+# sbin\start-server.bat -d
 ```
+> **Windows Note:** `.sh` scripts are for Linux/macOS. Windows users should use the corresponding `.bat` files (e.g., `start-server.bat`) located in the `sbin` directory of your IoTDB installation.
+
 Wait a few moments for IoTDB to initialize. You can check its logs in the `iotdb/logs` directory (relative to the repo root). Look for messages indicating successful startup.
 
 **4. Set up Python Environment and Install Dependencies:**
@@ -108,7 +119,7 @@ It's recommended to use a Python virtual environment:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate  # On Linux/macOS
-# .venv\Scriptsctivate   # On Windows
+# .venv\Scripts\activate   # On Windows
 ```
 
 Install the required Python packages:
@@ -159,8 +170,12 @@ To stop the services:
 2.  **Apache IoTDB:**
     ```bash
     cd /path/to/ApacheCon_2022_IoT/iotdb/apache-iotdb-X.X.X-server-bin # Adjust path
+    # On Linux/macOS:
     ./sbin/stop-server.sh # Stops DataNode and ConfigNode
+    # On Windows (in Command Prompt or PowerShell, from the apache-iotdb-X.X.X-server-bin directory):
+    # sbin\stop-server.bat
     ```
+    > **Windows Note:** Use `sbin\stop-server.bat` on Windows.
 3.  **Zenoh Router:** Press `Ctrl+C` in the terminal where `zenohd-linux-x86_64` is running.
 
 ## Troubleshooting Tips
