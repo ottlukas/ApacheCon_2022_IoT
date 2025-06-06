@@ -22,12 +22,16 @@ def sample_listener(sample):
     payload_str = ''
     if sample.payload is not None:
         try:
-            payload_str = sample.payload.decode() # Try decoding as UTF-8
+            # Convert ZBytes to Python bytes, then decode
+            payload_str = bytes(sample.payload).decode('utf-8')
         except UnicodeDecodeError:
-            payload_str = str(sample.payload) # Fallback to raw string representation of bytes
+            payload_str = str(sample.payload) # Fallback if decode fails
+        except Exception as e_decode: # Catch other potential errors during conversion/decode
+            payload_str = f"[ERROR decoding payload: {e_decode}]"
+
 
     print(f">> [Subscription listener] received {sample.kind!r} for {sample.key_expr} : "
-          f"{payload_str} with timestamp {sample.timestamp.time}")
+          f"{payload_str} with timestamp {str(sample.timestamp)}")
 
 if __name__ == "__main__":
     config = zenoh.Config()
@@ -39,7 +43,8 @@ if __name__ == "__main__":
     config.insert_json5("connect/endpoints", json.dumps([zenoh_router_endpoint]))
     # pylint: enable=line-too-long
     with zenoh.open(config) as open_session:
-        subscriber = open_session.declare_subscriber('/myfactory/machine1/temp', sample_listener)
+        print("Subscribing to key 'myfactory/machine1/temp'...", flush=True)
+        subscriber = open_session.declare_subscriber('myfactory/machine1/temp', sample_listener)
         # Keep the subscriber alive, e.g., by waiting for input or a long sleep
         # The original `time.sleep(10)` would cause the subscriber to stop after 10s.
         # For a subscriber, it usually needs to run indefinitely or until a signal.

@@ -1,0 +1,45 @@
+Producer script started. Configuring Zenoh session...
+Using Zenoh router endpoint: tcp/127.0.0.1:7447
+Attempting to open Zenoh session...
+Zenoh session opened. Starting sensor loop...
+Inside run_sensor_loop, starting while True loop.
+Read temperature: 15
+15
+Read temperature: 20
+20
+Read temperature: 16
+16
+Read temperature: 21
+21
+Read temperature: 20
+20
+Read temperature: 27
+27
+Read temperature: 25
+25
+Read temperature: 16
+16
+Read temperature: 29
+29
+Read temperature: 19
+19
+Read temperature: 24
+24
+Read temperature: 29
+29
+Read temperature: 24
+24
+Read temperature: 17
+17
+Read temperature: 28
+28
+Read temperature: 20
+20
+Read temperature: 25
+25
+Read temperature: 18
+18
+Read temperature: 28
+28
+Read temperature: 25
+25
