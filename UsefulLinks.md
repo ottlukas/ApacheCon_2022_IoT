@@ -11,8 +11,8 @@
 - [Zenoh Config Example](https://github.com/eclipse-zenoh/zenoh/blob/master/EXAMPLE_CONFIG.json5)
 - [Zenoh REST Plugin](https://zenoh.io/docs/manual/plugin-http/)
 - [Zenoh REST API](https://zenoh.io/docs/apis/apis/#rest-api)
-- [Zenoh Python API - Subscribe](https://zenoh-python.readthedocs.io/en/branch_0.5.0-beta.9/zenoh-api.html#subscribe-for-keys-values-changes-from-zenoh)
-- [Zenoh Python API - Timestamp](https://zenoh-python.readthedocs.io/en/branch_0.5.0-beta.9/zenoh-net-api.html#zenoh.net.Timestamp)
+- [eclipse-zenoh Python API - Subscribe](https://eclipse-zenoh.readthedocs.io/en/latest/api/python/api/zenoh.html#zenoh.Session.declare_subscriber)
+- [eclipse-zenoh Python API - Timestamp](https://eclipse-zenoh.readthedocs.io/en/latest/api/python/api/zenoh.html#zenoh.Timestamp)
 
 ### Timestamp conversion in Python
 - [Epoch to Datetime](https://pythonguides.com/python-epoch-to-datetime/)

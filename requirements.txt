@@ -1,9 +1,9 @@
 # ApacheCon 2022 IoT Demo - Python Dependencies
-# Compatible with Zenoh >= 0.11.0, IoTDB 2.x, and Panel >= 1.3.0
+# Compatible with eclipse-zenoh >= 1.9.0, IoTDB 2.x, and Panel >= 1.3.0
 
 # Core dependencies
-zenoh-python>=0.11.0
-apache-iotdb>=1.0.0
+eclipse-zenoh>=1.9.0
+apache-iotdb>=2.0.0
 panel>=1.3.0
 pandas>=1.5.0
 fastapi>=0.95.0

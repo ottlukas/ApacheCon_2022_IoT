@@ -4,6 +4,7 @@
 # TODO: Add module docstring
 @author: luk
 """
+import json
 from datetime import datetime
 
 import panel as pn
@@ -13,8 +14,15 @@ from iotdb.Session import Session
 
 #Settings
 #Zenoh
-Z = zenoh.Zenoh({'peer': 'tcp/127.0.0.1:7447'})
-W = Z.workspace('/')
+config = zenoh.Config()
+# Set mode to client
+config.insert_json5("mode", json.dumps("client"))
+# Set connect endpoints
+config.insert_json5("connect/endpoints", json.dumps(["tcp/127.0.0.1:7447"]))
+# Open session
+session = zenoh.open(config)
+workspace = session.workspace('/')
+
 # IoTDB
 IP = "127.0.0.1"
 PORT = "6667"
@@ -32,25 +40,49 @@ pn.state.template.param.update(site="Apache Con", title="Introduction to data ap
 # Zenoh retrieve values and save values to IoTDB
 def retrieve():
     """Retrieves temperature data from Zenoh and stores it in IoTDB."""
-    results = W.get('/myfactory/machine1/temp')
-    temperature_val = results[0].value.get_content()
-    session = Session(IP, PORT, USERNAME, PASSWORD)
-    session.open(False)
-    datetime_iso = datetime.fromtimestamp(results[0].timestamp.time).isoformat()
+    results = workspace.get('/myfactory/machine1/temp')
+    
+    # Handle new API where get returns Reply objects
+    temperature_val = None
+    timestamp_val = None
+    
+    if results:
+        for reply in results:
+            if reply.is_ok():
+                sample = reply.ok
+                if sample.payload is not None:
+                    try:
+                        temperature_val = bytes(sample.payload).decode('utf-8')
+                        if hasattr(sample.timestamp, 'time'):
+                            timestamp_val = datetime.fromtimestamp(sample.timestamp.time.timestamp()).isoformat()
+                        else:
+                            timestamp_val = datetime.utcnow().isoformat()
+                    except Exception as e:
+                        print(f"Error processing sample: {e}")
+                        temperature_val = str(sample.payload)
+                        timestamp_val = datetime.utcnow().isoformat()
+                break
+    
+    if temperature_val is None:
+        temperature_val = "0"
+        timestamp_val = datetime.utcnow().isoformat()
+    
+    iotdb_session = Session(IP, PORT, USERNAME, PASSWORD)
+    iotdb_session.open(False)
     # pylint: disable=line-too-long
-    sql_query = f"INSERT INTO root.myfactory.machine1(timestamp,temperature) values({datetime_iso}, {results[0].value.get_content()})"
+    sql_query = f"INSERT INTO root.myfactory.machine1(timestamp,temperature) values('{timestamp_val}', {temperature_val})"
     # pylint: enable=line-too-long
-    session.execute_non_query_statement(sql_query)
+    iotdb_session.execute_non_query_statement(sql_query)
     # pylint: disable=line-too-long
-    result = session.execute_query_statement("SELECT * FROM root.myfactory.machine1 ORDER BY TIME DESC limit 10")
+    result = iotdb_session.execute_query_statement("SELECT * FROM root.myfactory.machine1 ORDER BY TIME DESC limit 10")
     # pylint: enable=line-too-long
     # Transform to Pandas Dataset
     df_result = result.todf()
-    session.close()
+    iotdb_session.close()
     values_list = df_result['root.myfactory.machine1.temperature'].values.tolist()
     #TODO convert timevalues to datetime values
     timevalues_list = df_result.Time.values.tolist()
-    return temperature_val, values_list, timevalues_list
+    return float(temperature_val), values_list, timevalues_list
 
 # Gauge data
 CURRENT_TEMPERATURE = 0
@@ -82,13 +114,13 @@ def stream_data():
 
 GAUGE_DATA = {
     'tooltip': {
-        'formatter': '{a} <br/>{b} : {c}°C'
+        'formatter': '{a} <br/>{b} : {c}\u00b0C'
     },
     'series': [
         {
             'name': 'Gauge',
             'type': 'gauge',
-            'detail': {'formatter': '{value}°C'},
+            'detail': {'formatter': '{value}\u00b0C'},
             'data': [{'value': [CURRENT_TEMPERATURE], 'name': 'Temperature'}]
         }
     ]
@@ -136,7 +168,7 @@ row_echart_widget = pn.Row(echart_pane_widget,literal_input_widget).servable()
 # pylint: disable=line-too-long
 literal_input_widget.jscallback(args={'echart': echart_pane_widget,}, value="""
     console.log(cb_obj.value)
-    let literal_dict = JSON.parse( cb_obj.value.replaceAll("'",'"') )
+    let literal_dict = JSON.parse( cb_obj.value.replaceAll("'",'\"') )
     console.log(literal_dict)
 
     let keys = Object.keys(literal_dict);
