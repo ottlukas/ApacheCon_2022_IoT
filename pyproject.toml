@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apachecon-iot-demo"
+version = "1.0.0"
+description = "ApacheCon 2022 IoT Demo - Integration with Zenoh and Apache IoTDB"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Lucas Ott", email = "lukas.ott@example.com"}
+]
+keywords = ["iot", "zenoh", "iotdb", "panel", "demo"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "zenoh-python>=0.11.0",
+    "apache-iotdb>=1.0.0",
+    "panel>=1.3.0",
+    "pandas>=1.5.0",
+    "fastapi>=0.95.0",
+    "uvicorn>=0.22.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pylint>=2.17.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
+    "testcontainers>=3.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ottlukas/ApacheCon_2022_IoT"
+Documentation = "https://github.com/ottlukas/ApacheCon_2022_IoT#readme"
+Repository = "https://github.com/ottlukas/ApacheCon_2022_IoT.git"
+Issues = "https://github.com/ottlukas/ApacheCon_2022_IoT/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+
+[tool.pylint.messages_control]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "W0613",  # unused-argument
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

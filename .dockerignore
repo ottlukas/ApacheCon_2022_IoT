@@ -1,0 +1,85 @@
+# Docker ignore file
+
+# Git
+.git
+.gitignore
+
+# Python
+.venv
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+ENV/
+env/
+venv/
+ENV.bak/
+venv.bak/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Documentation
+docs/
+*.md
+
+# Logs
+*.log
+logs/
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local configuration
+*.local
+*.env
+.env
+.env.*
+
+# IoTDB data (persisted via volume)
+iotdb/data/
+iotdb/logs/
+
+# Parts directory (demo files)
+Parts/
+
+# Image files
+*.jpg
+*.png
+*.gif
