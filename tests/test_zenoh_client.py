@@ -17,33 +17,48 @@ from src.zenoh_client import ZenohClient
 
 @pytest.fixture
 def mock_zenoh():
-    """Mock Zenoh module."""
+    """Mock Zenoh module for eclipse-zenoh >= 1.9.0."""
     with patch('src.zenoh_client.zenoh') as mock:
-        with patch('src.zenoh_client.Zenoh') as mock_zenoh_class:
-            with patch('src.zenoh_client.Workspace') as mock_workspace_class:
-                # Setup mock instances
-                mock_zenoh_instance = MagicMock()
-                mock_workspace_instance = MagicMock()
-                mock_zenoh_class.return_value = mock_zenoh_instance
-                mock_zenoh_instance.workspace.return_value = mock_workspace_instance
-                
-                # Setup mock get method
-                mock_result = MagicMock()
-                mock_value = MagicMock()
-                mock_value.get_content.return_value = "25.0"
-                mock_timestamp = MagicMock()
-                mock_timestamp.time = 1234567890
-                mock_result.value = mock_value
-                mock_result.timestamp = mock_timestamp
-                mock_workspace_instance.get.return_value = [mock_result]
-                
-                yield {
-                    'module': mock,
-                    'Zenoh': mock_zenoh_class,
-                    'Workspace': mock_workspace_class,
-                    'instance': mock_zenoh_instance,
-                    'workspace': mock_workspace_instance
-                }
+        # Mock Config
+        mock_config = MagicMock()
+        mock.Config.return_value = mock_config
+        
+        # Mock Session
+        mock_session = MagicMock()
+        mock.open.return_value = mock_session
+        
+        # Mock Workspace
+        mock_workspace = MagicMock()
+        mock_session.workspace.return_value = mock_workspace
+        
+        # Setup mock get method - new API returns Reply objects
+        mock_reply = MagicMock()
+        mock_reply.is_ok.return_value = True
+        mock_sample = MagicMock()
+        mock_sample.payload = b"25.0"
+        mock_timestamp = MagicMock()
+        mock_timestamp.time.timestamp.return_value = 1234567890
+        mock_sample.timestamp = mock_timestamp
+        mock_reply.ok = mock_sample
+        mock_workspace.get.return_value = [mock_reply]
+        
+        # Setup mock put method
+        mock_workspace.put.return_value = None
+        
+        # Setup mock subscriber
+        mock_subscriber = MagicMock()
+        mock_workspace.declare_subscriber.return_value = mock_subscriber
+        
+        yield {
+            'module': mock,
+            'Config': mock.Config,
+            'open': mock.open,
+            'session': mock_session,
+            'workspace': mock_workspace,
+            'subscriber': mock_subscriber,
+            'reply': mock_reply,
+            'sample': mock_sample
+        }
 
 
 class TestZenohClientInitialization:
@@ -52,7 +67,7 @@ class TestZenohClientInitialization:
     def test_init(self):
         """Test client initialization."""
         client = ZenohClient()
-        assert client._zenoh is None
+        assert client._session is None
         assert client._workspace is None
         assert client._connected is False
         assert client._subscribers == {}
@@ -68,7 +83,7 @@ class TestZenohClientConnection:
         
         assert result is True
         assert client.is_connected() is True
-        mock_zenoh['Zenoh'].assert_called_once()
+        mock_zenoh['open'].assert_called_once()
     
     def test_connect_failure(self):
         """Test connection failure when Zenoh is not available."""
@@ -88,10 +103,8 @@ class TestZenohClientConnection:
         )
         
         assert result is True
-        # Check that custom options were passed
-        call_args = mock_zenoh['Zenoh'].call_args
-        assert call_args[1]['peer'] == "tcp/192.168.1.1:7447"
-        assert call_args[1]['custom_option'] == "value"
+        # Check that config was created
+        mock_zenoh['Config'].assert_called()
 
 
 class TestZenohClientPublish:
@@ -166,14 +179,10 @@ class TestZenohClientSubscribe:
         client = ZenohClient()
         client.connect()
         
-        # Setup mock subscriber
-        mock_subscriber = MagicMock()
-        mock_zenoh['workspace'].subscribe.return_value = mock_subscriber
-        
         result = client.subscribe("/test/temp", timeout=0.1)
         
         assert isinstance(result, list)
-        mock_zenoh['workspace'].subscribe.assert_called_once()
+        mock_zenoh['workspace'].declare_subscriber.assert_called_once()
     
     def test_subscribe_not_connected(self):
         """Test subscribe when not connected."""
@@ -194,8 +203,9 @@ class TestZenohClientClose:
         client.close()
         
         assert client.is_connected() is False
-        assert client._zenoh is None
+        assert client._session is None
         assert client._workspace is None
+        mock_zenoh['session'].close.assert_called_once()
     
     def test_close_with_subscribers(self, mock_zenoh):
         """Test closing with active subscribers."""
@@ -220,9 +230,6 @@ class TestZenohClientSubscriberManagement:
         """Test creating a persistent subscriber."""
         client = ZenohClient()
         client.connect()
-        
-        mock_subscriber = MagicMock()
-        mock_zenoh['workspace'].subscribe.return_value = mock_subscriber
         
         callback = lambda x: None
         result = client.get_subscriber("/test/temp", callback)

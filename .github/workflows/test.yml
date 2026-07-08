@@ -24,6 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install eclipse-zenoh>=1.9.0 apache-iotdb>=2.0.0
         pip install -r requirements.txt
         pip install pytest pytest-asyncio httpx
     

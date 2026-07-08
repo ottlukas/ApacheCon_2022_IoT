@@ -1,6 +1,6 @@
 # ApacheCon 2022 IoT Demo
 
-This repository contains the code for an IoT demo showcasing integration with Apache IoTDB and Zenoh for data ingestion and visualization/control via a Python Panel application.
+This repository contains the code for an IoT demo showcasing integration with Apache IoTDB and **eclipse-zenoh** for data ingestion and visualization/control via a Python Panel application.
 
 This `feature/zenoh-api-upgrade` branch specifically focuses on upgrading the Zenoh API to the latest stable version.
 
@@ -10,7 +10,7 @@ The demo consists of three main components running as separate processes on your
 
 1.  **Zenoh Router (`zenohd`):** The core communication middleware enabling efficient data distribution.
 2.  **Apache IoTDB:** A high-performance time-series database optimized for IoT data.
-3.  **Panel Service (Python):** Your application that interacts with Zenoh to send/receive data, and with IoTDB to store and retrieve time-series data.
+3.  **Panel Service (Python):** Your application that interacts with eclipse-zenoh to send/receive data, and with IoTDB to store and retrieve time-series data.
 
 All services communicate over `localhost`.
 
@@ -82,7 +82,7 @@ Navigate to the `iotdb` subdirectory:
 cd iotdb
 ```
 
-Download Apache IoTDB (if you haven't already). The script will place it in a versioned subdirectory (e.g., `apache-iotdb-1.3.1-server-bin`):
+Download Apache IoTDB (if you haven't already). The script will place it in a versioned subdirectory (e.g., `apache-iotdb-2.0.0-server-bin`):
 ```bash
 ./download_iotdb.sh # You might need to chmod +x download_iotdb.sh first
 ```
@@ -124,7 +124,7 @@ source .venv/bin/activate  # On Linux/macOS
 
 Install the required Python packages:
 ```bash
-pip install -r panel/requirements.txt
+pip install -r requirements.txt
 ```
 
 **5. Run the Panel Application (MQTT & IoTDB Demo):**
@@ -135,21 +135,21 @@ In the terminal where your virtual environment is active, run the Panel applicat
 ```bash
 python panel/panel_app.py
 ```
-You should see log output from the Panel application indicating it's connecting to Zenoh and attempting to connect to IoTDB. The Panel UI should be accessible in your web browser (typically at `http://localhost:5006/panel_app`).
+You should see log output from the Panel application indicating it's connecting to eclipse-zenoh and attempting to connect to IoTDB. The Panel UI should be accessible in your web browser (typically at `http://localhost:5006/panel_app`).
 
 ## End-to-End Testing and Verification
 
 1.  **Open Panel UI:** Open `http://localhost:5006/panel_app` in your web browser.
 2.  **Observe Data Flow (Simulated Sensor):**
-    *   The `zenoh_producer.py` script (run as part of `panel_app.py` in this version if "Start External Producer" is checked or by default) simulates a sensor sending data (e.g., temperature) via Zenoh.
+    *   The `zenoh_producer.py` script (run as part of `panel_app.py` in this version if "Start External Producer" is checked or by default) simulates a sensor sending data (e.g., temperature) via eclipse-zenoh.
     *   You should see this data appearing in the "Zenoh Subscriber Data" section of the Panel UI.
     *   The Panel application also subscribes to this Zenoh topic and should display the received messages.
 3.  **Check IoTDB Storage:**
     *   The Panel application is configured to store the received sensor data into Apache IoTDB.
     *   In the Panel UI, use the "Fetch from IoTDB" button or similar control to query data from a specific time range.
-    *   Verify that the data shown matches what was observed from the Zenoh stream.
+    *   Verify that the data shown matches what was observed from the eclipse-zenoh stream.
 4.  **Test Control Command (if applicable):**
-    *   If the demo includes a control aspect (e.g., sending a command back to a device via Zenoh from the Panel UI), test this functionality. Observe logs on both the Panel service and any simulated device/subscriber to confirm the command is sent and received. (This specific branch focuses on Zenoh API upgrade, so advanced control features might vary).
+    *   If the demo includes a control aspect (e.g., sending a command back to a device via eclipse-zenoh from the Panel UI), test this functionality. Observe logs on both the Panel service and any simulated device/subscriber to confirm the command is sent and received. (This specific branch focuses on Zenoh API upgrade, so advanced control features might vary).
 
 ## Key Log Indicators
 
@@ -158,9 +158,9 @@ You should see log output from the Panel application indicating it's connecting 
     *   ConfigNode: `logs/log_confignode_all.log` - look for successful startup messages.
     *   DataNode: `logs/log_datanode_all.log` - look for successful startup and registration with ConfigNode.
 *   **`panel_app.py`:**
-    *   `INFO:root:Successfully connected to Zenoh router`
+    *   `INFO:root:Successfully connected to eclipse-zenoh router`
     *   `INFO:root:Session opened with IoTDB`
-    *   Log messages indicating data received from Zenoh and data being written/read from IoTDB.
+    *   Log messages indicating data received from eclipse-zenoh and data being written/read from IoTDB.
 
 ## Cleaning Up
 
@@ -183,6 +183,6 @@ To stop the services:
 *   **Port Conflicts:** If a service fails to start, check if another application is using the required port (e.g., 7447 for Zenoh, 8000 for Zenoh REST API, 6667/9093 for IoTDB, 5006 for Panel).
 *   **Firewall:** Ensure your firewall is not blocking communication between the services on `localhost`.
 *   **Java Version/`JAVA_HOME`:** Double-check your Java installation and `JAVA_HOME` environment variable if IoTDB fails to start.
-*   **Python Dependencies:** Ensure all packages in `panel/requirements.txt` are installed correctly in your active Python environment.
-*   **Zenoh Version Compatibility:** This branch uses a specific Zenoh API. Ensure client libraries match the `zenohd` version if you are modifying components. The provided `zenohd-linux-x86_64` should work with the Python dependencies.
+*   **Python Dependencies:** Ensure all packages in `requirements.txt` are installed correctly in your active Python environment. The main dependencies are `eclipse-zenoh>=1.9.0` and `apache-iotdb>=2.0.0`.
+*   **Zenoh Version Compatibility:** This branch uses the new eclipse-zenoh API (1.9.0+). Ensure client libraries match the `zenohd` version if you are modifying components. The provided `zenohd-linux-x86_64` should work with the Python dependencies.
 *   **IoTDB Schema:** The `panel_app.py` typically attempts to create the necessary database and time series schema in IoTDB automatically. If you encounter IoTDB errors related to schema or storage groups, you might need to manually clear IoTDB's data directory (`iotdb/data`) and restart it, or use IoTDB's CLI to inspect/create schema.
