@@ -1,52 +1,106 @@
 version: '3.9'
 
 services:
+  # Zenoh Router
   zenohd:
-    image: eclipse/zenoh
+    image: eclipse/zenoh:latest
     container_name: zenohd
     ports:
-      - "7447:7447/tcp"  # Zenoh protocol TCP
-      - "8000:8000/tcp"  # Zenoh REST API (optional, for direct testing)
+      - "7447:7447/tcp"    # Zenoh protocol TCP
+      - "8000:8000/tcp"    # Zenoh REST API
     restart: unless-stopped
     environment:
-      - RUST_LOG=info # Set Zenoh logging level
-    healthcheck: # Added a simple healthcheck for zenohd
+      - RUST_LOG=info
+    healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "7447"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
+    networks:
+      - iot-network
 
+  # Apache IoTDB 2.x
   iotdb:
-    image: apache/iotdb:1.3.2-standalone # Using a specific stable version
+    image: apache/iotdb:2.0.0-standalone
     container_name: iotdb
     ports:
-      - "6667:6667"  # IoTDB Thrift service
-      - "8181:8181"  # IoTDB HTTP service (if applicable)
+      - "6667:6667"      # IoTDB Thrift service
+      - "8181:8181"      # IoTDB HTTP service (if applicable)
     restart: unless-stopped
     environment:
-      - JVM_XMS=512M # Adjust JVM heap size as needed
+      - JVM_XMS=512M
       - JVM_XMX=1G
+    volumes:
+      - ./iotdb/data:/iotdb/data
+      - ./iotdb/logs:/iotdb/logs
+      - ./iotdb/conf:/iotdb/conf
     healthcheck:
       test: ["CMD", "bash", "-c", "echo 'show timeseries' | /iotdb/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
+    networks:
+      - iot-network
 
-  panel:
+  # API Service
+  api:
     build:
       context: .
-      dockerfile: Dockerfile.panel
-    container_name: panel
+      dockerfile: Dockerfile
+    container_name: api
     depends_on:
       zenohd:
-        condition: service_healthy # Changed from service_started to service_healthy
+        condition: service_healthy
       iotdb:
         condition: service_healthy
+    ports:
+      - "8080:8080"      # API port
     environment:
-      # These variables configure your Panel service to connect to the Docker services
       - ZENOH_ROUTER_ENDPOINT=tcp://zenohd:7447
       - IOTDB_HOST=iotdb
       - IOTDB_PORT=6667
-    # If your panel service needs to expose a web interface, add ports here:
-    # ports:
-    #   - "8080:8080" # Example: if your Panel serves a web UI
+      - IOTDB_USERNAME=root
+      - IOTDB_PASSWORD=root
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+    restart: unless-stopped
+    networks:
+      - iot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Panel Dashboard (optional)
+  panel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: panel
+    depends_on:
+      zenohd:
+        condition: service_healthy
+      iotdb:
+        condition: service_healthy
+    ports:
+      - "5006:5006"      # Panel port
+    environment:
+      - ZENOH_ROUTER_ENDPOINT=tcp://zenohd:7447
+      - IOTDB_HOST=iotdb
+      - IOTDB_PORT=6667
+      - IOTDB_USERNAME=root
+      - IOTDB_PASSWORD=root
+    command: ["panel", "serve", "panel_script.py", "--host", "0.0.0.0", "--port", "5006", "--autoreload"]
+    restart: unless-stopped
+    networks:
+      - iot-network
+    profiles:
+      - dashboard
+
+networks:
+  iot-network:
+    driver: bridge
