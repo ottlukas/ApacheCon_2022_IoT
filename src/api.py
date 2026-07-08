@@ -8,6 +8,7 @@ This module provides REST API endpoints for interacting with Zenoh and IoTDB.
 
 import os
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -30,26 +31,9 @@ logger = logging.getLogger(__name__)
 zenoh_client = ZenohClient()
 iotdb_client = IoTDBClient()
 
-# Create FastAPI app
-app = FastAPI(
-    title="ApacheCon 2022 IoT Demo API",
-    description="API for interacting with Zenoh and Apache IoTDB",
-    version="1.0.0"
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize clients on startup."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan handling for startup and shutdown."""
     try:
         # Initialize Zenoh client
         zenoh_peer = os.getenv("ZENOH_ROUTER_ENDPOINT", "tcp/127.0.0.1:7447")
@@ -73,20 +57,32 @@ async def startup_event():
         iotdb_client.initialize_schema()
         logger.info("IoTDB schema initialized")
         
-    except Exception as e:
-        logger.error(f"Error during startup: {e}")
-        raise
+        yield
+    finally:
+        try:
+            zenoh_client.close()
+            iotdb_client.close()
+            logger.info("Clients closed successfully")
+        except Exception as e:
+            logger.error(f"Error during shutdown: {e}")
 
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Clean up clients on shutdown."""
-    try:
-        zenoh_client.close()
-        iotdb_client.close()
-        logger.info("Clients closed successfully")
-    except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
+# Create FastAPI app
+app = FastAPI(
+    title="ApacheCon 2022 IoT Demo API",
+    description="API for interacting with Zenoh and Apache IoTDB",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
@@ -124,6 +120,8 @@ async def get_from_zenoh(
         if value is None:
             raise HTTPException(status_code=404, detail="No value found at path")
         return {"path": path, "value": value}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting from Zenoh: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -180,6 +178,8 @@ async def get_latest_temperature():
         if result is None:
             raise HTTPException(status_code=404, detail="No temperature data found")
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting latest temperature: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -203,6 +203,8 @@ async def sync_zenoh_to_iotdb():
             "zenoh_value": zenoh_value,
             "timestamp": timestamp
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error syncing data: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -216,7 +216,7 @@ class IoTDBClient:
             
             if df is not None and len(df) > 0:
                 # Extract temperature column
-                temp_col = f"{self.DEFAULT_STORAGE_GROUP}.{self.DEFAULT_TIMESERIES}.temperature"
+                temp_col = f"{self.DEFAULT_STORAGE_GROUP}.{self.DEFAULT_TIMESERIES}"
                 if temp_col in df.columns:
                     for idx, row in df.iterrows():
                         records.append({
