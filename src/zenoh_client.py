@@ -10,6 +10,7 @@ and version compatibility for eclipse-zenoh >= 1.9.0.
 import logging
 from typing import Optional, List, Any, Dict
 import time
+from client_utils import is_connected as util_is_connected, close_connection as util_close_connection
 
 # Try to import zenoh with version compatibility
 try:
@@ -79,28 +80,11 @@ class ZenohClient:
     
     def is_connected(self) -> bool:
         """Check if client is connected to Zenoh router."""
-        return self._connected and self._session is not None
+        return util_is_connected(self)
     
     def close(self):
         """Close the Zenoh connection."""
-        if self._session is not None:
-            try:
-                # Close all subscribers
-                for sub in self._subscribers.values():
-                    try:
-                        sub.close()
-                    except Exception:
-                        pass
-                self._subscribers.clear()
-                
-                # Close session
-                self._session.close()
-                self._session = None
-                self._workspace = None
-                self._connected = False
-                logger.info("Zenoh connection closed")
-            except Exception as e:
-                logger.error(f"Error closing Zenoh connection: {e}")
+        util_close_connection(self)
     
     def publish(self, path: str, value: Any) -> bool:
         """

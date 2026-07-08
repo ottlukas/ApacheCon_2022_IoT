@@ -10,6 +10,7 @@ for IoTDB 2.x API.
 import logging
 from typing import Optional, List, Any, Dict
 import time
+from client_utils import is_connected as util_is_connected, close_connection as util_close_connection
 
 # Try to import IoTDB Session with version compatibility
 try:
@@ -94,18 +95,11 @@ class IoTDBClient:
     
     def is_connected(self) -> bool:
         """Check if client is connected to IoTDB."""
-        return self._connected and self._session is not None
+        return util_is_connected(self)
     
     def close(self):
         """Close the IoTDB connection."""
-        if self._session is not None:
-            try:
-                self._session.close()
-                self._session = None
-                self._connected = False
-                logger.info("IoTDB connection closed")
-            except Exception as e:
-                logger.error(f"Error closing IoTDB connection: {e}")
+        util_close_connection(self)
     
     def initialize_schema(self, storage_group: str = None, timeseries: str = None) -> bool:
         """

@@ -5,7 +5,7 @@ Unit tests for the IoTDB client module.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 import sys
 import os
 import pandas as pd
