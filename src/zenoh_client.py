@@ -10,7 +10,11 @@ and version compatibility for eclipse-zenoh >= 1.9.0.
 import logging
 from typing import Optional, List, Any, Dict
 import time
-from client_utils import is_connected as util_is_connected, close_connection as util_close_connection
+from client_utils import (
+    is_connected as util_is_connected,
+    close_connection as util_close_connection,
+    check_connected_or_return as util_check_connected_or_return,
+)
 
 # Try to import zenoh with version compatibility
 try:
@@ -97,9 +101,9 @@ class ZenohClient:
         Returns:
             True if publish succeeded, False otherwise
         """
-        if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
-            return False
+        ret = util_check_connected_or_return(self, "Zenoh router", False)
+        if ret is not None:
+            return ret
         
         try:
             # Convert value to string if needed
@@ -123,9 +127,9 @@ class ZenohClient:
         Returns:
             The value if found, None otherwise
         """
-        if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
-            return None
+        ret = util_check_connected_or_return(self, "Zenoh router", None)
+        if ret is not None:
+            return ret
         
         try:
             # Get with timeout
@@ -163,9 +167,9 @@ class ZenohClient:
         Returns:
             List of received values
         """
-        if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
-            return []
+        ret = util_check_connected_or_return(self, "Zenoh router", [])
+        if ret is not None:
+            return ret
         
         values = []
         
@@ -217,9 +221,9 @@ class ZenohClient:
         Returns:
             Subscriber object or None if failed
         """
-        if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
-            return None
+        ret = util_check_connected_or_return(self, "Zenoh router", None)
+        if ret is not None:
+            return ret
         
         try:
             subscriber = self._workspace.declare_subscriber(path, callback)

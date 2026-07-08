@@ -21,6 +21,23 @@ def is_connected(obj: Any) -> bool:
     return bool(getattr(obj, "_connected", False) and getattr(obj, "_session", None) is not None)
 
 
+def check_connected_or_return(obj: Any, service_name: str, return_value: Any):
+    """Check connection and return a specified value when not connected.
+
+    This helper centralizes the common pattern used across clients where a
+    method first validates the connection and otherwise logs an error and
+    returns a failure-like value (False, None, empty list, etc.).
+
+    Returns:
+        None if the object is connected (caller should continue), otherwise
+        the provided `return_value` which the caller must return immediately.
+    """
+    if not is_connected(obj):
+        logger.error(f"Not connected to {service_name}")
+        return return_value
+    return None
+
+
 def close_connection(obj: Any) -> None:
     """Safely close a client's connection and clear related state.
 

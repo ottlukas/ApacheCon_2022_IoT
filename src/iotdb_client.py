@@ -10,7 +10,11 @@ for IoTDB 2.x API.
 import logging
 from typing import Optional, List, Any, Dict
 import time
-from client_utils import is_connected as util_is_connected, close_connection as util_close_connection
+from client_utils import (
+    is_connected as util_is_connected,
+    close_connection as util_close_connection,
+    check_connected_or_return as util_check_connected_or_return,
+)
 
 # Try to import IoTDB Session with version compatibility
 try:
@@ -112,9 +116,9 @@ class IoTDBClient:
         Returns:
             True if schema initialization succeeded, False otherwise
         """
-        if not self.is_connected():
-            logger.error("Not connected to IoTDB")
-            return False
+        ret = util_check_connected_or_return(self, "IoTDB", False)
+        if ret is not None:
+            return ret
         
         try:
             sg = storage_group or self.DEFAULT_STORAGE_GROUP
@@ -156,9 +160,9 @@ class IoTDBClient:
         Returns:
             True if insert succeeded, False otherwise
         """
-        if not self.is_connected():
-            logger.error("Not connected to IoTDB")
-            return False
+        ret = util_check_connected_or_return(self, "IoTDB", False)
+        if ret is not None:
+            return ret
         
         try:
             # Convert timestamp to proper format if needed
@@ -192,9 +196,9 @@ class IoTDBClient:
         Returns:
             List of temperature records with timestamp and value
         """
-        if not self.is_connected():
-            logger.error("Not connected to IoTDB")
-            return []
+        ret = util_check_connected_or_return(self, "IoTDB", [])
+        if ret is not None:
+            return ret
         
         try:
             sql = (
@@ -247,9 +251,9 @@ class IoTDBClient:
         Returns:
             Query result or None if error
         """
-        if not self.is_connected():
-            logger.error("Not connected to IoTDB")
-            return None
+        ret = util_check_connected_or_return(self, "IoTDB", None)
+        if ret is not None:
+            return ret
         
         try:
             result = self._session.execute_query_statement(sql)
@@ -268,9 +272,9 @@ class IoTDBClient:
         Returns:
             True if succeeded, False otherwise
         """
-        if not self.is_connected():
-            logger.error("Not connected to IoTDB")
-            return False
+        ret = util_check_connected_or_return(self, "IoTDB", False)
+        if ret is not None:
+            return ret
         
         try:
             self._session.execute_non_query_statement(sql)
