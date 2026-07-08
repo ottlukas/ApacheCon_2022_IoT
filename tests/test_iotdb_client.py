@@ -2,16 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 Unit tests for the IoTDB client module.
+
+Tests mock internal clients; disable noisy pylint checks.
 """
 
+# pylint: disable=trailing-whitespace,protected-access,too-few-public-methods,redefined-outer-name,wrong-import-order
 import pytest
 from unittest.mock import patch, MagicMock
-import sys
-import os
 import pandas as pd
-
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from src.iotdb_client import IoTDBClient
 
@@ -209,7 +207,7 @@ class TestIoTDBClientQuery:
         client = IoTDBClient()
         results = client.query_temperature(limit=10)
         
-        assert results == []
+        assert not results
     
     def test_query_temperature_empty_result(self, mock_iotdb_session):
         """Test query with empty result."""
@@ -222,7 +220,7 @@ class TestIoTDBClientQuery:
         
         results = client.query_temperature(limit=10)
         
-        assert results == []
+        assert not results
 
 
 class TestIoTDBClientLatest:

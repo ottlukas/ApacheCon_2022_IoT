@@ -10,6 +10,7 @@ management logic across client implementations.
 from typing import Any
 import logging
 
+# pylint: disable=broad-except,trailing-whitespace
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +34,7 @@ def check_connected_or_return(obj: Any, service_name: str, return_value: Any):
         the provided `return_value` which the caller must return immediately.
     """
     if not is_connected(obj):
-        logger.error(f"Not connected to {service_name}")
+        logger.error("Not connected to %s", service_name)
         return return_value
     return None
 
@@ -75,4 +76,4 @@ def close_connection(obj: Any) -> None:
 
         logger.info("Connection closed by client_utils.close_connection")
     except Exception as exc:  # pragma: no cover - defensive logging
-        logger.error(f"Error closing connection in client_utils: {exc}")
+        logger.error("Error closing connection in client_utils: %s", exc)

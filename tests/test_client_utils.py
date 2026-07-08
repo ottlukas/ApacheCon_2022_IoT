@@ -7,7 +7,7 @@ This test accesses internal client attributes and defines a tiny helper
 class; disable some pylint checks that are inappropriate for tests.
 """
 
-# pylint: disable=too-few-public-methods,protected-access
+# pylint: disable=trailing-whitespace,too-few-public-methods,protected-access
 from unittest.mock import MagicMock
 
 from src.client_utils import is_connected, close_connection

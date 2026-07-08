@@ -7,6 +7,7 @@ This module provides a wrapper for Apache IoTDB operations with support
 for IoTDB 2.x API.
 """
 
+# pylint: disable=broad-except,trailing-whitespace
 import logging
 from typing import Optional, List, Any, Dict
 from .client_utils import (
@@ -25,7 +26,7 @@ except ImportError:
         from iotdb import Session
         IOTDB_AVAILABLE = True
     except ImportError as e:
-        logging.warning(f"IoTDB library not available: {e}")
+        logging.warning("IoTDB library not available: %s", e)
         IOTDB_AVAILABLE = False
         Session = None
 
@@ -88,11 +89,11 @@ class IoTDBClient:
             self._session = Session(host, port, username, password)
             self._session.open(False)  # False = do not fetch metadata
             self._connected = True
-            logger.info(f"Successfully connected to IoTDB at {host}:{port}")
+            logger.info("Successfully connected to IoTDB at %s:%s", host, port)
             return True
             
         except Exception as e:
-            logger.error(f"Error connecting to IoTDB: {e}")
+            logger.error("Error connecting to IoTDB: %s", e)
             self._connected = False
             return False
     
@@ -127,7 +128,7 @@ class IoTDBClient:
             # Create storage group if not exists
             create_sg_sql = f"SET STORAGE GROUP TO {sg}"
             self._session.execute_non_query_statement(create_sg_sql)
-            logger.debug(f"Storage group {sg} created or already exists")
+            logger.debug("Storage group %s created or already exists", sg)
             
             # Create time series if not exists
             create_ts_sql = (
@@ -135,7 +136,7 @@ class IoTDBClient:
                 f"WITH DATATYPE=INT32, ENCODING=PLAIN"
             )
             self._session.execute_non_query_statement(create_ts_sql)
-            logger.debug(f"Time series {full_ts_path} created or already exists")
+            logger.debug("Time series %s created or already exists", full_ts_path)
             
             return True
             
@@ -143,9 +144,9 @@ class IoTDBClient:
             # Ignore errors if schema already exists
             error_msg = str(e).lower()
             if "already exists" in error_msg or "timeseries already exist" in error_msg:
-                logger.debug(f"Schema already exists: {e}")
+                logger.debug("Schema already exists: %s", e)
                 return True
-            logger.error(f"Error initializing schema: {e}")
+            logger.error("Error initializing schema: %s", e)
             return False
     
     def insert_temperature(self, timestamp: str, temperature: float) -> bool:
@@ -178,11 +179,11 @@ class IoTDBClient:
             )
             
             self._session.execute_non_query_statement(sql)
-            logger.debug(f"Inserted temperature: {temperature} at {timestamp}")
+            logger.debug("Inserted temperature: %s at %s", temperature, timestamp)
             return True
             
         except Exception as e:
-            logger.error(f"Error inserting temperature: {e}")
+            logger.error("Error inserting temperature: %s", e)
             return False
     
     def query_temperature(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -215,17 +216,17 @@ class IoTDBClient:
                 # Extract temperature column
                 temp_col = f"{self.DEFAULT_STORAGE_GROUP}.{self.DEFAULT_TIMESERIES}"
                 if temp_col in df.columns:
-                    for idx, row in df.iterrows():
+                    for _, row in df.iterrows():
                         records.append({
                             'timestamp': str(row.get('Time', '')),
                             'temperature': float(row.get(temp_col, 0))
                         })
             
-            logger.debug(f"Queried {len(records)} temperature records")
+            logger.debug("Queried %d temperature records", len(records))
             return records
             
         except Exception as e:
-            logger.error(f"Error querying temperature: {e}")
+            logger.error("Error querying temperature: %s", e)
             return []
     
     def get_latest_temperature(self) -> Optional[Dict[str, Any]]:
@@ -258,7 +259,7 @@ class IoTDBClient:
             result = self._session.execute_query_statement(sql)
             return result
         except Exception as e:
-            logger.error(f"Error executing query: {e}")
+            logger.error("Error executing query: %s", e)
             return None
     
     def execute_non_query(self, sql: str) -> bool:
@@ -279,5 +280,5 @@ class IoTDBClient:
             self._session.execute_non_query_statement(sql)
             return True
         except Exception as e:
-            logger.error(f"Error executing non-query: {e}")
+            logger.error("Error executing non-query: %s", e)
             return False

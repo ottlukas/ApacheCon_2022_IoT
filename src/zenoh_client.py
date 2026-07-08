@@ -7,6 +7,8 @@ This module provides a wrapper for Zenoh operations with error handling
 and version compatibility for eclipse-zenoh >= 1.9.0.
 """
 
+# pylint: disable=broad-except,trailing-whitespace
+
 import logging
 from typing import Optional, List, Any, Dict
 import time
@@ -21,7 +23,7 @@ try:
     import zenoh
     ZENOH_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Zenoh not available: {e}")
+    logging.warning("Zenoh not available: %s", e)
     ZENOH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -74,11 +76,11 @@ class ZenohClient:
             self._session = zenoh.open(self._config)
             self._workspace = self._session.workspace('/')
             self._connected = True
-            logger.info(f"Successfully connected to Zenoh router at {peer}")
+            logger.info("Successfully connected to Zenoh router at %s", peer)
             return True
             
         except Exception as e:
-            logger.error(f"Error connecting to Zenoh: {e}")
+            logger.error("Error connecting to Zenoh: %s", e)
             self._connected = False
             return False
     
@@ -109,11 +111,11 @@ class ZenohClient:
             # Convert value to string if needed
             value_str = str(value)
             self._workspace.put(path, value_str)
-            logger.debug(f"Published to {path}: {value_str}")
+            logger.debug("Published to %s: %s", path, value_str)
             return True
             
         except Exception as e:
-            logger.error(f"Error publishing to Zenoh path {path}: {e}")
+            logger.error("Error publishing to Zenoh path %s: %s", path, e)
             return False
     
     def get(self, path: str, timeout: float = 2.0) -> Optional[Any]:
@@ -144,15 +146,15 @@ class ZenohClient:
                         sample = latest.ok
                         if sample.payload is not None:
                             value = bytes(sample.payload).decode('utf-8')
-                            logger.debug(f"Got value from {path}: {value}")
+                            logger.debug("Got value from %s: %s", path, value)
                             return value
                 time.sleep(0.1)
             
-            logger.warning(f"Timeout getting value from {path}")
+            logger.warning("Timeout getting value from %s", path)
             return None
             
         except Exception as e:
-            logger.error(f"Error getting from Zenoh path {path}: {e}")
+            logger.error("Error getting from Zenoh path %s: %s", path, e)
             return None
     
     def subscribe(self, path: str, callback=None, timeout: float = 5.0) -> List[Any]:
@@ -179,15 +181,18 @@ class ZenohClient:
                 if sample.payload is not None:
                     try:
                         value = bytes(sample.payload).decode('utf-8')
+                        ts = None
+                        if hasattr(sample.timestamp, 'time'):
+                            ts = sample.timestamp.time.timestamp()
                         values.append({
                             'path': str(sample.key_expr),
                             'value': value,
-                            'timestamp': sample.timestamp.time.timestamp() if hasattr(sample.timestamp, 'time') else None
+                            'timestamp': ts
                         })
                         if callback:
                             callback(sample)
                     except Exception as e:
-                        logger.error(f"Error processing sample: {e}")
+                        logger.error("Error processing sample: %s", e)
             
             # Subscribe with default callback
             subscriber = self._workspace.declare_subscriber(path, default_callback)
@@ -203,11 +208,11 @@ class ZenohClient:
                 self._subscribers[path].close()
                 del self._subscribers[path]
             
-            logger.debug(f"Subscribed to {path}, received {len(values)} messages")
+            logger.debug("Subscribed to %s, received %d messages", path, len(values))
             return values
             
         except Exception as e:
-            logger.error(f"Error subscribing to Zenoh path {path}: {e}")
+            logger.error("Error subscribing to Zenoh path %s: %s", path, e)
             return []
     
     def get_subscriber(self, path: str, callback) -> Optional[Any]:
@@ -228,10 +233,10 @@ class ZenohClient:
         try:
             subscriber = self._workspace.declare_subscriber(path, callback)
             self._subscribers[path] = subscriber
-            logger.debug(f"Created persistent subscriber for {path}")
+            logger.debug("Created persistent subscriber for %s", path)
             return subscriber
         except Exception as e:
-            logger.error(f"Error creating subscriber for {path}: {e}")
+            logger.error("Error creating subscriber for %s: %s", path, e)
             return None
     
     def unsubscribe(self, path: str) -> bool:
@@ -248,9 +253,9 @@ class ZenohClient:
             try:
                 self._subscribers[path].close()
                 del self._subscribers[path]
-                logger.debug(f"Unsubscribed from {path}")
+                logger.debug("Unsubscribed from %s", path)
                 return True
             except Exception as e:
-                logger.error(f"Error unsubscribing from {path}: {e}")
+                logger.error("Error unsubscribing from %s: %s", path, e)
                 return False
         return False

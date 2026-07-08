@@ -26,6 +26,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+# pylint: disable=trailing-whitespace,broad-except
 
 # Initialize clients
 zenoh_client = ZenohClient()
@@ -38,7 +39,7 @@ async def lifespan(app: FastAPI):
         # Initialize Zenoh client
         zenoh_peer = os.getenv("ZENOH_ROUTER_ENDPOINT", "tcp/127.0.0.1:7447")
         zenoh_client.connect(peer=zenoh_peer)
-        logger.info(f"Connected to Zenoh router at {zenoh_peer}")
+        logger.info("Connected to Zenoh router at %s", zenoh_peer)
         
         # Initialize IoTDB client
         iotdb_host = os.getenv("IOTDB_HOST", "127.0.0.1")
@@ -51,7 +52,7 @@ async def lifespan(app: FastAPI):
             username=iotdb_username,
             password=iotdb_password
         )
-        logger.info(f"Connected to IoTDB at {iotdb_host}:{iotdb_port}")
+        logger.info("Connected to IoTDB at %s:%s", iotdb_host, iotdb_port)
         
         # Initialize schema
         iotdb_client.initialize_schema()
@@ -64,7 +65,7 @@ async def lifespan(app: FastAPI):
             iotdb_client.close()
             logger.info("Clients closed successfully")
         except Exception as e:
-            logger.error(f"Error during shutdown: {e}")
+            logger.error("Error during shutdown: %s", e)
 
 
 # Create FastAPI app
@@ -106,8 +107,8 @@ async def publish_to_zenoh(
         zenoh_client.publish(path, value)
         return {"status": "success", "path": path, "value": value}
     except Exception as e:
-        logger.error(f"Error publishing to Zenoh: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error publishing to Zenoh: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/zenoh/get")
@@ -123,8 +124,8 @@ async def get_from_zenoh(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting from Zenoh: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error getting from Zenoh: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/zenoh/subscribe")
@@ -136,8 +137,8 @@ async def subscribe_to_zenoh(
         values = zenoh_client.subscribe(path, timeout=5.0)
         return {"path": path, "values": values}
     except Exception as e:
-        logger.error(f"Error subscribing to Zenoh: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error subscribing to Zenoh: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/iotdb/insert")
@@ -153,8 +154,8 @@ async def insert_into_iotdb(
         iotdb_client.insert_temperature(timestamp, temperature)
         return {"status": "success", "timestamp": timestamp, "temperature": temperature}
     except Exception as e:
-        logger.error(f"Error inserting into IoTDB: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error inserting into IoTDB: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/iotdb/query")
@@ -166,8 +167,8 @@ async def query_iotdb(
         results = iotdb_client.query_temperature(limit=limit)
         return {"results": results}
     except Exception as e:
-        logger.error(f"Error querying IoTDB: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error querying IoTDB: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/iotdb/latest")
@@ -181,8 +182,8 @@ async def get_latest_temperature():
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting latest temperature: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error getting latest temperature: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/sync")
@@ -206,8 +207,8 @@ async def sync_zenoh_to_iotdb():
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error syncing data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error syncing data: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 def main():
@@ -215,7 +216,8 @@ def main():
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", "8080"))
     
-    logger.info(f"Starting API server on {host}:{port}")
+    # pylint: disable=broad-except
+    logger.info("Starting API server on %s:%d", host, port)
     uvicorn.run(app, host=host, port=port)
 
 

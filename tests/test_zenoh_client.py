@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 Unit tests for the Zenoh client module.
+
+Tests use protected members and mock re-use; disable a few pylint
+checks that are noisy for test modules.
 """
 
+# pylint: disable=trailing-whitespace,protected-access,too-few-public-methods,redefined-outer-name,wrong-import-order
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -65,7 +69,7 @@ class TestZenohClientInitialization:
         assert client._session is None
         assert client._workspace is None
         assert client._connected is False
-        assert client._subscribers == {}
+        assert not client._subscribers
 
 
 class TestZenohClientConnection:
@@ -184,7 +188,7 @@ class TestZenohClientSubscribe:
         client = ZenohClient()
         result = client.subscribe("/test/temp")
         
-        assert result == []
+        assert not result
 
 
 class TestZenohClientClose:

@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 Unit tests for the API module.
+
+Disable a few pylint checks that are noisy in test files.
 """
 
+# pylint: disable=trailing-whitespace,too-few-public-methods,redefined-outer-name,wrong-import-order
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
@@ -95,7 +98,7 @@ class TestZenohEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["path"] == "/test/temp"
-        assert data["values"] == []
+        assert not data["values"]
         mock_zenoh_client.subscribe.assert_called_once()
 
 
