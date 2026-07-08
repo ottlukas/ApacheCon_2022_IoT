@@ -6,14 +6,9 @@ Unit tests for the API module.
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch, MagicMock
-import sys
-import os
+from unittest.mock import patch
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-from src.api import app, zenoh_client, iotdb_client
+from src.api import app
 
 
 @pytest.fixture

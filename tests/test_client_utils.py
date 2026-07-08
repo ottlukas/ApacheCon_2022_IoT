@@ -2,17 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 Unit tests for src.client_utils
+
+This test accesses internal client attributes and defines a tiny helper
+class; disable some pylint checks that are inappropriate for tests.
 """
 
+# pylint: disable=too-few-public-methods,protected-access
 from unittest.mock import MagicMock
-import pytest
 
-import sys
-import os
-# Ensure src is on path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-from client_utils import is_connected, close_connection
+from src.client_utils import is_connected, close_connection
 
 
 class DummyClient:
@@ -51,4 +49,4 @@ def test_close_connection_closes_session_and_subscribers():
     assert c._session is None
     assert c._connected is False
     assert c._workspace is None
-    assert c._subscribers == {}
+    assert not c._subscribers

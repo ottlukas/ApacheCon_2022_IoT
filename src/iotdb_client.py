@@ -9,8 +9,7 @@ for IoTDB 2.x API.
 
 import logging
 from typing import Optional, List, Any, Dict
-import time
-from client_utils import (
+from .client_utils import (
     is_connected as util_is_connected,
     close_connection as util_close_connection,
     check_connected_or_return as util_check_connected_or_return,

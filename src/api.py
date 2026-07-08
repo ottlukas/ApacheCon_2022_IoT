@@ -10,7 +10,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware

@@ -5,12 +5,7 @@ Unit tests for the Zenoh client module.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-import sys
-import os
-
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from unittest.mock import patch, MagicMock
 
 from src.zenoh_client import ZenohClient
 
@@ -231,7 +226,8 @@ class TestZenohClientSubscriberManagement:
         client = ZenohClient()
         client.connect()
         
-        callback = lambda x: None
+        def callback(x):
+            return None
         result = client.get_subscriber("/test/temp", callback)
         
         assert result is not None
