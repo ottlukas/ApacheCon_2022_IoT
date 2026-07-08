@@ -22,8 +22,7 @@ from .iotdb_client import IoTDBClient
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 # pylint: disable=trailing-whitespace,broad-except
@@ -31,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Initialize clients
 zenoh_client = ZenohClient()
 iotdb_client = IoTDBClient()
+
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
@@ -40,24 +40,21 @@ async def lifespan(fastapi_app: FastAPI):
         zenoh_peer = os.getenv("ZENOH_ROUTER_ENDPOINT", "tcp/127.0.0.1:7447")
         zenoh_client.connect(peer=zenoh_peer)
         logger.info("Connected to Zenoh router at %s", zenoh_peer)
-        
+
         # Initialize IoTDB client
         iotdb_host = os.getenv("IOTDB_HOST", "127.0.0.1")
         iotdb_port = os.getenv("IOTDB_PORT", "6667")
         iotdb_username = os.getenv("IOTDB_USERNAME", "root")
         iotdb_password = os.getenv("IOTDB_PASSWORD", "root")
         iotdb_client.connect(
-            host=iotdb_host,
-            port=iotdb_port,
-            username=iotdb_username,
-            password=iotdb_password
+            host=iotdb_host, port=iotdb_port, username=iotdb_username, password=iotdb_password
         )
         logger.info("Connected to IoTDB at %s:%s", iotdb_host, iotdb_port)
-        
+
         # Initialize schema
         iotdb_client.initialize_schema()
         logger.info("IoTDB schema initialized")
-        
+
         yield
     finally:
         try:
@@ -73,7 +70,7 @@ app = FastAPI(
     title="ApacheCon 2022 IoT Demo API",
     description="API for interacting with Zenoh and Apache IoTDB",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS middleware
@@ -93,14 +90,14 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "zenoh_connected": zenoh_client.is_connected(),
-        "iotdb_connected": iotdb_client.is_connected()
+        "iotdb_connected": iotdb_client.is_connected(),
     }
 
 
 @app.get("/zenoh/publish")
 async def publish_to_zenoh(
     path: str = Query("/myfactory/machine1/temp", description="Zenoh path to publish to"),
-    value: str = Query("25", description="Value to publish")
+    value: str = Query("25", description="Value to publish"),
 ):
     """Publish a value to a Zenoh path."""
     try:
@@ -144,13 +141,13 @@ async def subscribe_to_zenoh(
 @app.post("/iotdb/insert")
 async def insert_into_iotdb(
     timestamp: Optional[str] = None,
-    temperature: float = Query(25.0, description="Temperature value to insert")
+    temperature: float = Query(25.0, description="Temperature value to insert"),
 ):
     """Insert a temperature reading into IoTDB."""
     try:
         if timestamp is None:
             timestamp = datetime.utcnow().isoformat()
-        
+
         iotdb_client.insert_temperature(timestamp, temperature)
         return {"status": "success", "timestamp": timestamp, "temperature": temperature}
     except Exception as e:
@@ -159,9 +156,7 @@ async def insert_into_iotdb(
 
 
 @app.get("/iotdb/query")
-async def query_iotdb(
-    limit: int = Query(10, description="Number of records to return")
-):
+async def query_iotdb(limit: int = Query(10, description="Number of records to return")):
     """Query temperature data from IoTDB."""
     try:
         results = iotdb_client.query_temperature(limit=limit)
@@ -194,16 +189,12 @@ async def sync_zenoh_to_iotdb():
         zenoh_value = zenoh_client.get("/myfactory/machine1/temp")
         if zenoh_value is None:
             raise HTTPException(status_code=404, detail="No value found in Zenoh")
-        
+
         # Insert into IoTDB
         timestamp = datetime.utcnow().isoformat()
         iotdb_client.insert_temperature(timestamp, float(zenoh_value))
-        
-        return {
-            "status": "success",
-            "zenoh_value": zenoh_value,
-            "timestamp": timestamp
-        }
+
+        return {"status": "success", "zenoh_value": zenoh_value, "timestamp": timestamp}
     except HTTPException:
         raise
     except Exception as e:
@@ -215,7 +206,7 @@ def main():
     """Run the API server."""
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", "8080"))
-    
+
     # pylint: disable=broad-except
     logger.info("Starting API server on %s:%d", host, port)
     uvicorn.run(app, host=host, port=port)
