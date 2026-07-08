@@ -33,7 +33,7 @@ zenoh_client = ZenohClient()
 iotdb_client = IoTDBClient()
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(fastapi_app: FastAPI):
     """FastAPI lifespan handling for startup and shutdown."""
     try:
         # Initialize Zenoh client
