@@ -1,24 +1,35 @@
 services:
+  # ---------------------------------------------------------------------------
   # Zenoh Broker / Router
+  # The eclipse/zenoh image runs as a Zenoh router by default.
+  # --listen      activates the TCP listener that all clients connect to.
+  # --rest-http-port enables the lightweight REST API on port 8000.
+  # ---------------------------------------------------------------------------
   zenoh:
     image: eclipse/zenoh:1.0.0
     container_name: zenoh-broker
     ports:
-      - "7447:7447/tcp"    # Zenoh Protocol (TCP)
+      - "7447:7447/tcp"    # Zenoh Protocol (TCP) – used by simulator and tests
       - "8000:8000/tcp"    # Zenoh REST API
     environment:
       - RUST_LOG=info
-    command: ["--listen", "tcp/0.0.0.0:7447"]
+    command:
+      - "--listen"
+      - "tcp/0.0.0.0:7447"
+      - "--rest-http-port"
+      - "8000"
     restart: unless-stopped
     networks:
       - apachecon-iot-net
 
-  # Apache IoTDB Database
+  # ---------------------------------------------------------------------------
+  # Apache IoTDB – standalone (single-node) configuration
+  # ---------------------------------------------------------------------------
   iotdb:
     image: apache/iotdb:1.3.3-standalone
     container_name: iotdb-db
     ports:
-      - "6667:6667/tcp"    # Thrift RPC
+      - "6667:6667/tcp"    # Thrift RPC – used by bridge, dashboard, and tests
     environment:
       - JVM_XMS=512M
       - JVM_XMX=1G
@@ -26,16 +37,25 @@ services:
       - iotdb-data:/iotdb/data
       - iotdb-logs:/iotdb/logs
     healthcheck:
-      test: ["CMD", "bash", "-c", "echo 'show timeseries' | /iotdb/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root"]
+      # The IoTDB CLI can take ~20 s to become ready; the start_period absorbs this.
+      test:
+        - "CMD"
+        - "bash"
+        - "-c"
+        - "echo 'show timeseries' | /iotdb/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root"
       interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 30s
     restart: unless-stopped
     networks:
       - apachecon-iot-net
 
+  # ---------------------------------------------------------------------------
   # Zenoh-to-IoTDB Bridge
+  # Subscribes to Zenoh and persists sensor readings into IoTDB.
+  # Built from Dockerfile.bridge.
+  # ---------------------------------------------------------------------------
   zenoh-to-iotdb:
     build:
       context: .
@@ -60,7 +80,11 @@ services:
     networks:
       - apachecon-iot-net
 
+  # ---------------------------------------------------------------------------
   # FastAPI + Panel Dashboard Portal
+  # Serves the monitoring UI at http://localhost:8080/panel.
+  # Built from Dockerfile.dashboard.
+  # ---------------------------------------------------------------------------
   dashboard:
     build:
       context: .
@@ -88,11 +112,17 @@ services:
     networks:
       - apachecon-iot-net
 
+# ---------------------------------------------------------------------------
+# Shared network
+# ---------------------------------------------------------------------------
 networks:
   apachecon-iot-net:
     name: apachecon-iot-net
     driver: bridge
 
+# ---------------------------------------------------------------------------
+# Named volumes for IoTDB persistence
+# ---------------------------------------------------------------------------
 volumes:
   iotdb-data:
     name: iotdb-data

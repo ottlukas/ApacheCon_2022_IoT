@@ -8,9 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Zenoh configuration
+# NOTE: Zenoh 1.x key expressions must NOT have a leading slash.
 ZENOH_ENDPOINT = os.getenv("ZENOH_ENDPOINT", "tcp/zenoh:7447")
 ZENOH_HOST_ENDPOINT = os.getenv("ZENOH_HOST_ENDPOINT", "tcp/localhost:7447")
-ZENOH_KEY_EXPRESSION = os.getenv("ZENOH_KEY_EXPRESSION", "/myfactory/machine1/temperature")
+ZENOH_KEY_EXPRESSION = os.getenv("ZENOH_KEY_EXPRESSION", "myfactory/machine1/temperature")
 
 # IoTDB configuration
 IOTDB_HOST = os.getenv("IOTDB_HOST", "iotdb")

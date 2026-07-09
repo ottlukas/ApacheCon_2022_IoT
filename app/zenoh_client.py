@@ -1,248 +1,257 @@
 # -*- coding: utf-8 -*-
 """Zenoh client module for the IoT application.
 
-Provides support for eclipse-zenoh >= 1.9.0.
+Supports eclipse-zenoh >= 1.9.0.
+
+Key API differences from zenoh 0.x:
+  - There is NO workspace concept; all operations (put, declare_subscriber, get)
+    are performed directly on the Session object.
+  - Config is built via zenoh.Config.from_json5() using a JSON5 dict string.
+  - sample.payload is a ZBytes object; convert to bytes with bytes(sample.payload).
+  - Subscribers are managed via session.declare_subscriber(key_expr, callback)
+    and stopped by calling subscriber.undeclare().
 """
 
+import json
 import logging
 import time
-from typing import Optional, List, Any, Dict
+from typing import Any, Callable, Dict, List, Optional
 
-# Try to import zenoh with version compatibility
 try:
     import zenoh
+
     ZENOH_AVAILABLE = True
-except ImportError as e:
-    logging.warning("Zenoh library not available: %s", e)
+except ImportError as exc:
+    logging.warning("Zenoh library not available: %s", exc)
     ZENOH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
 class ZenohClient:
-    """Client wrapper for interacting with Zenoh router."""
+    """Client wrapper for interacting with a Zenoh router (eclipse-zenoh >= 1.9.0)."""
 
-    def __init__(self):
-        """Initialize the Zenoh client."""
-        self._session = None
-        self._workspace = None
-        self._connected = False
+    def __init__(self) -> None:
+        self._session: Optional[Any] = None
+        self._connected: bool = False
+        # Maps key-expression string -> active Subscriber object
         self._subscribers: Dict[str, Any] = {}
-        self._config = None
 
-    def connect(self, peer: str = "tcp/127.0.0.1:7447", **kwargs) -> bool:
-        """Connect to Zenoh router.
+    # ------------------------------------------------------------------
+    # Connection management
+    # ------------------------------------------------------------------
+
+    def connect(self, peer: str = "tcp/127.0.0.1:7447") -> bool:
+        """Open a Zenoh client session connecting to *peer*.
 
         Args:
-            peer: Zenoh peer address (e.g. tcp/127.0.0.1:7447)
-            **kwargs: Additional configuration options
+            peer: Zenoh router endpoint, e.g. ``tcp/localhost:7447``.
 
         Returns:
-            True if connection succeeded, False otherwise
+            ``True`` if the session was opened successfully.
         """
         if not ZENOH_AVAILABLE:
             logger.error("Zenoh library is not installed")
             return False
 
         try:
-            self._config = zenoh.Config()
-            self._config.insert_json5("mode", '"client"')
-            self._config.insert_json5("connect/endpoints", f"[{peer!r}]")
-
-            # Apply any additional config overrides
-            for key, value in kwargs.items():
-                if key != "peer":
-                    self._config.insert_json5(key, str(value))
-
-            self._session = zenoh.open(self._config)
-            self._workspace = self._session.workspace("/")
+            conf_dict = {
+                "mode": "client",
+                "connect": {"endpoints": [peer]},
+            }
+            config = zenoh.Config.from_json5(json.dumps(conf_dict))
+            self._session = zenoh.open(config)
             self._connected = True
-            logger.info("Successfully connected to Zenoh router at %s", peer)
+            logger.info("Connected to Zenoh router at %s", peer)
             return True
-        except Exception as e:
-            logger.error("Error connecting to Zenoh: %s", e)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Error connecting to Zenoh at %s: %s", peer, exc)
             self._connected = False
             return False
 
     def is_connected(self) -> bool:
-        """Check if client is connected to Zenoh router."""
-        return bool(self._connected and self._session is not None)
-
-    def close(self):
-        """Close all subscribers and the Zenoh session."""
-        if self._session is None:
-            return
-
+        """Return ``True`` when a live session is open."""
+        if self._session is None or not self._connected:
+            return False
         try:
-            # Safely close all active subscribers
-            for path, subscriber in list(self._subscribers.items()):
-                try:
-                    subscriber.close()
-                except Exception as sub_err:
-                    logger.debug("Error closing subscriber for %s: %s", path, sub_err)
-            self._subscribers.clear()
+            return not self._session.is_closed()
+        except Exception:  # pylint: disable=broad-except
+            return False
 
-            # Close the session
+    def close(self) -> None:
+        """Undeclare all subscribers and close the Zenoh session."""
+        # Undeclare subscribers first
+        for path, subscriber in list(self._subscribers.items()):
+            try:
+                subscriber.undeclare()
+                logger.debug("Undeclared subscriber for %s", path)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug("Error undeclaring subscriber for %s: %s", path, exc)
+        self._subscribers.clear()
+
+        if self._session is not None:
             try:
                 self._session.close()
-            except Exception as sess_err:
-                logger.debug("Error closing session: %s", sess_err)
+                logger.info("Zenoh session closed")
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug("Error closing Zenoh session: %s", exc)
 
-            self._session = None
-            self._workspace = None
-            self._connected = False
-            logger.info("Zenoh connection closed successfully")
-        except Exception as e:
-            logger.error("Error during Zenoh client close: %s", e)
+        self._session = None
+        self._connected = False
+
+    # ------------------------------------------------------------------
+    # Publishing
+    # ------------------------------------------------------------------
 
     def publish(self, path: str, value: Any) -> bool:
-        """Publish a value to a Zenoh path.
+        """Put *value* on *path* in the Zenoh router.
 
         Args:
-            path: Zenoh path to publish to
-            value: Value to publish
+            path:  Zenoh key expression to publish to.
+            value: Value to publish; will be converted to ``bytes`` via str().
 
         Returns:
-            True if publish succeeded, False otherwise
+            ``True`` on success.
         """
         if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
+            logger.error("Cannot publish – not connected to Zenoh router")
             return False
-
         try:
-            value_str = str(value)
-            self._workspace.put(path, value_str)
-            logger.debug("Published to %s: %s", path, value_str)
+            payload = str(value).encode("utf-8")
+            self._session.put(path, payload)
+            logger.debug("Published to %s: %s", path, value)
             return True
-        except Exception as e:
-            logger.error("Error publishing to Zenoh path %s: %s", path, e)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Error publishing to %s: %s", path, exc)
             return False
 
-    def get(self, path: str, timeout: float = 2.0) -> Optional[str]:
-        """Get the latest value from a Zenoh path.
+    # ------------------------------------------------------------------
+    # Subscribing
+    # ------------------------------------------------------------------
+
+    def get_subscriber(self, path: str, callback: Callable) -> Optional[Any]:
+        """Declare a **persistent** subscriber on *path*.
+
+        The *callback* is invoked for every received Sample.
+        The caller is responsible for keeping the returned Subscriber
+        alive (or calling :meth:`unsubscribe` / :meth:`close`).
 
         Args:
-            path: Zenoh path to get value from
-            timeout: Timeout in seconds
+            path:     Zenoh key expression to subscribe to.
+            callback: Callable that receives a ``zenoh.Sample``.
 
         Returns:
-            The string value if found, None otherwise
+            The ``zenoh.Subscriber`` object, or ``None`` on failure.
         """
         if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
+            logger.error("Cannot subscribe – not connected to Zenoh router")
             return None
-
         try:
-            start_time = time.time()
-            while time.time() - start_time < timeout:
-                results = self._workspace.get(path)
-                if results and len(results) > 0:
-                    latest = results[-1]
-                    if latest.ok is not None:
-                        sample = latest.ok
-                        if sample.payload is not None:
-                            value = bytes(sample.payload).decode("utf-8")
-                            logger.debug("Got value from %s: %s", path, value)
-                            return value
-                time.sleep(0.1)
-
-            logger.warning("Timeout getting value from %s", path)
-            return None
-        except Exception as e:
-            logger.error("Error getting from Zenoh path %s: %s", path, e)
-            return None
-
-    def subscribe(self, path: str, callback=None, timeout: float = 5.0) -> List[Dict[str, Any]]:
-        """Subscribe to a Zenoh path and collect values for a specified duration.
-
-        Args:
-            path: Zenoh path to subscribe to
-            callback: Optional callback for received messages
-            timeout: Duration in seconds to run subscription
-
-        Returns:
-            List of collected values
-        """
-        if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
-            return []
-
-        values = []
-
-        try:
-            def default_callback(sample):
-                if sample.payload is not None:
-                    try:
-                        value = bytes(sample.payload).decode("utf-8")
-                        ts = None
-                        if hasattr(sample.timestamp, "time"):
-                            ts = sample.timestamp.time.timestamp()
-                        values.append({
-                            "path": str(sample.key_expr),
-                            "value": value,
-                            "timestamp": ts
-                        })
-                        if callback:
-                            callback(sample)
-                    except Exception as e:
-                        logger.error("Error processing sample: %s", e)
-
-            subscriber = self._workspace.declare_subscriber(path, default_callback)
+            subscriber = self._session.declare_subscriber(path, callback)
             self._subscribers[path] = subscriber
-
-            start_time = time.time()
-            while time.time() - start_time < timeout:
-                time.sleep(0.1)
-
-            if path in self._subscribers:
-                self._subscribers[path].close()
-                del self._subscribers[path]
-
-            logger.debug("Subscribed to %s, collected %d messages", path, len(values))
-            return values
-        except Exception as e:
-            logger.error("Error subscribing to Zenoh path %s: %s", path, e)
-            return []
-
-    def get_subscriber(self, path: str, callback) -> Optional[Any]:
-        """Create a persistent subscriber for a Zenoh path.
-
-        Args:
-            path: Zenoh path to subscribe to
-            callback: Callback function for received samples
-
-        Returns:
-            Subscriber object or None if failed
-        """
-        if not self.is_connected():
-            logger.error("Not connected to Zenoh router")
-            return None
-
-        try:
-            subscriber = self._workspace.declare_subscriber(path, callback)
-            self._subscribers[path] = subscriber
-            logger.debug("Created persistent subscriber for %s", path)
+            logger.info("Declared subscriber on %s", path)
             return subscriber
-        except Exception as e:
-            logger.error("Error creating subscriber for %s: %s", path, e)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Error declaring subscriber for %s: %s", path, exc)
             return None
+
+    def subscribe(
+        self, path: str, callback: Optional[Callable] = None, timeout: float = 5.0
+    ) -> List[Dict[str, Any]]:
+        """Subscribe to *path*, collect messages for *timeout* seconds, then return.
+
+        Primarily used by integration tests that need to collect a batch of
+        messages synchronously.
+
+        Args:
+            path:     Zenoh key expression.
+            callback: Optional extra callback invoked per-sample.
+            timeout:  How many seconds to listen before returning.
+
+        Returns:
+            List of ``{"path": str, "value": str, "timestamp": float|None}`` dicts.
+        """
+        if not self.is_connected():
+            logger.error("Cannot subscribe – not connected to Zenoh router")
+            return []
+
+        collected: List[Dict[str, Any]] = []
+
+        def _handler(sample: Any) -> None:
+            if sample.payload is None:
+                return
+            try:
+                value_str = bytes(sample.payload).decode("utf-8")
+                ts: Optional[float] = None
+                if sample.timestamp is not None:
+                    try:
+                        # NTP64 object – convert to Unix time
+                        ts = sample.timestamp.get_time().timestamp()
+                    except Exception:  # pylint: disable=broad-except
+                        pass
+                collected.append(
+                    {"path": str(sample.key_expr), "value": value_str, "timestamp": ts}
+                )
+                if callback is not None:
+                    callback(sample)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error("Error processing sample: %s", exc)
+
+        subscriber = None
+        try:
+            subscriber = self._session.declare_subscriber(path, _handler)
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                time.sleep(0.05)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Error during timed subscription on %s: %s", path, exc)
+        finally:
+            if subscriber is not None:
+                try:
+                    subscriber.undeclare()
+                except Exception:  # pylint: disable=broad-except
+                    pass
+
+        logger.debug("Collected %d messages from %s", len(collected), path)
+        return collected
 
     def unsubscribe(self, path: str) -> bool:
-        """Unsubscribe from a Zenoh path.
+        """Stop and remove the subscriber registered under *path*.
 
         Args:
-            path: Zenoh path to unsubscribe from
+            path: Zenoh key expression previously passed to
+                  :meth:`get_subscriber`.
 
         Returns:
-            True if successful, False otherwise
+            ``True`` if a subscriber was found and removed.
         """
-        if path in self._subscribers:
-            try:
-                self._subscribers[path].close()
-                del self._subscribers[path]
-                logger.debug("Unsubscribed from %s", path)
-                return True
-            except Exception as e:
-                logger.error("Error unsubscribing from %s: %s", path, e)
-                return False
-        return False
+        subscriber = self._subscribers.pop(path, None)
+        if subscriber is None:
+            return False
+        try:
+            subscriber.undeclare()
+            logger.debug("Unsubscribed from %s", path)
+            return True
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Error unsubscribing from %s: %s", path, exc)
+            return False
+
+
+def decode_payload(sample: Any) -> Optional[str]:
+    """Decode a Zenoh sample's payload to a UTF-8 string.
+
+    Convenience helper used by bridge and dashboard callbacks.
+
+    Args:
+        sample: A ``zenoh.Sample`` received in a subscriber callback.
+
+    Returns:
+        Decoded string, or ``None`` if the payload is absent or undecodable.
+    """
+    if sample.payload is None:
+        return None
+    try:
+        return bytes(sample.payload).decode("utf-8")
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.error("Failed to decode Zenoh payload: %s", exc)
+        return None

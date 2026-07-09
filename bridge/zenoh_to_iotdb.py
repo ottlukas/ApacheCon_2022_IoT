@@ -1,193 +1,234 @@
 # -*- coding: utf-8 -*-
 """Zenoh-to-IoTDB Bridge service.
 
-Actively subscribes to Zenoh telemetry data and persists it in Apache IoTDB.
+Subscribes to the configured Zenoh key expression, validates incoming JSON
+telemetry payloads using the SensorReading Pydantic model, and persists
+readings into Apache IoTDB.
+
+Designed to run as a Docker container:
+  - Connects to Zenoh at ZENOH_ENDPOINT  (default: tcp/zenoh:7447)
+  - Connects to IoTDB at IOTDB_HOST:IOTDB_PORT  (default: iotdb:6667)
+
+Both connections use retry/backoff logic so the bridge tolerates slow
+container startup ordering.
 """
 
-import sys
 import json
 import logging
-import time
 import signal
+import sys
+import time
 from datetime import datetime, timezone
 
 from app import config
-from app.zenoh_client import ZenohClient
 from app.iotdb_client import IoTDBClient
 from app.models import SensorReading
+from app.zenoh_client import ZenohClient, decode_payload
 
-# Setup logging
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("zenoh_to_iotdb_bridge")
 
-# Global instances
+# ---------------------------------------------------------------------------
+# Global state
+# ---------------------------------------------------------------------------
 zenoh_client = ZenohClient()
 iotdb_client = IoTDBClient()
-running = True
+_running = True
 
 
-def handle_shutdown(signum, frame):
-    """Gracefully handle shutdown signals."""
-    global running
-    logger.info("Shutdown signal received. Stopping bridge...")
-    running = False
+# ---------------------------------------------------------------------------
+# Signal handling
+# ---------------------------------------------------------------------------
 
 
-# Register signals
-signal.signal(signal.SIGINT, handle_shutdown)
-signal.signal(signal.SIGTERM, handle_shutdown)
+def _handle_shutdown(signum, frame) -> None:  # noqa: ARG001
+    """Respond to SIGINT / SIGTERM by setting the shutdown flag."""
+    global _running  # noqa: PLW0603
+    logger.info("Shutdown signal %d received – stopping bridge …", signum)
+    _running = False
 
 
-def sample_callback(sample):
-    """Callback for Zenoh subscription messages."""
-    if sample.payload is None:
-        logger.warning("Received Zenoh sample with null payload")
+signal.signal(signal.SIGINT, _handle_shutdown)
+signal.signal(signal.SIGTERM, _handle_shutdown)
+
+
+# ---------------------------------------------------------------------------
+# Zenoh sample callback
+# ---------------------------------------------------------------------------
+
+
+def _sample_callback(sample) -> None:
+    """Process a single Zenoh sample.
+
+    Decodes JSON, validates with Pydantic, and inserts into IoTDB.
+    Malformed or invalid messages are logged and silently dropped.
+    """
+    payload_str = decode_payload(sample)
+    if payload_str is None:
+        logger.warning("Received Zenoh sample with empty/null payload – skipping")
         return
 
+    logger.debug("Received payload: %s", payload_str)
+
+    # ---- JSON decode -------------------------------------------------------
     try:
-        payload_bytes = bytes(sample.payload)
-        payload_str = payload_bytes.decode("utf-8")
-        logger.debug("Received payload: %s", payload_str)
-
-        # Parse JSON
         data = json.loads(payload_str)
+    except json.JSONDecodeError as exc:
+        logger.error("Malformed JSON from Zenoh – skipping: %s", exc)
+        return
 
-        # Validate with Pydantic model
+    # ---- Pydantic validation -----------------------------------------------
+    try:
         reading = SensorReading(**data)
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.error("Payload validation failed – skipping: %s", exc)
+        return
 
-        # Extract values
-        timestamp = reading.timestamp
-        value = reading.value
+    # ---- Timestamp resolution ----------------------------------------------
+    timestamp: str = reading.timestamp
+    if not timestamp:
+        timestamp = datetime.now(timezone.utc).isoformat()
 
-        # Fallback to current UTC time if timestamp is missing or empty
-        if not timestamp:
-            timestamp = datetime.now(timezone.utc).isoformat()
+    logger.info(
+        "Bridging value → IoTDB | device=%s measurement=%s value=%s timestamp=%s",
+        reading.device,
+        reading.measurement,
+        reading.value,
+        timestamp,
+    )
 
-        logger.info(
-            "Bridging value to IoTDB - Device: %s, Measurement: %s, Value: %s, Timestamp: %s",
-            reading.device,
-            reading.measurement,
-            value,
-            timestamp
-        )
+    # ---- IoTDB insert ------------------------------------------------------
+    if not iotdb_client.is_connected():
+        logger.error("IoTDB not connected – cannot insert, will retry on next message")
+        return
 
-        # Insert to IoTDB
-        success = iotdb_client.insert_temperature(timestamp, value)
-        if not success:
-            logger.error("Failed to insert telemetry into IoTDB")
-
-    except json.JSONDecodeError as jde:
-        logger.error("Failed to decode JSON from Zenoh payload: %s", jde)
-    except Exception as e:
-        logger.error("Error processing incoming Zenoh message: %s", e)
+    if not iotdb_client.insert_temperature(timestamp, reading.value):
+        logger.error("Failed to insert telemetry into IoTDB (see above for details)")
 
 
-def connect_services(max_retries: int = 20, delay: float = 3.0) -> bool:
-    """Connect to Zenoh and IoTDB with retry/backoff logic.
+# ---------------------------------------------------------------------------
+# Startup connection helper
+# ---------------------------------------------------------------------------
+
+
+def _connect_services(max_retries: int = 20, delay: float = 3.0) -> bool:
+    """Connect to Zenoh and IoTDB with linear retry/backoff.
 
     Args:
-        max_retries: Maximum connection attempts
-        delay: Sleep duration between attempts
+        max_retries: Maximum number of connection attempts per service.
+        delay:       Seconds to wait between attempts.
 
     Returns:
-        True if all connections succeeded and schema initialized, False otherwise
+        ``True`` when both services are connected and the IoTDB schema
+        is initialised.
     """
-    global running
+    global _running  # noqa: PLW0603
 
-    # Try connecting to Zenoh
+    # ---- Zenoh ----------------------------------------------------------------
     retries = 0
-    while running and not zenoh_client.is_connected():
+    while _running and not zenoh_client.is_connected():
         logger.info(
-            "Attempting connection to Zenoh at %s (attempt %d/%d)...",
+            "Connecting to Zenoh at %s (attempt %d/%d) …",
             config.ZENOH_ENDPOINT,
             retries + 1,
-            max_retries
+            max_retries,
         )
         if zenoh_client.connect(peer=config.ZENOH_ENDPOINT):
+            logger.info("Zenoh connected")
             break
         retries += 1
         if retries >= max_retries:
-            logger.error("Could not connect to Zenoh after maximum retries.")
+            logger.error("Could not connect to Zenoh after %d attempts", max_retries)
             return False
         time.sleep(delay)
 
-    # Try connecting to IoTDB
+    if not _running:
+        return False
+
+    # ---- IoTDB ----------------------------------------------------------------
     retries = 0
-    while running and not iotdb_client.is_connected():
+    while _running and not iotdb_client.is_connected():
         logger.info(
-            "Attempting connection to IoTDB at %s:%d (attempt %d/%d)...",
+            "Connecting to IoTDB at %s:%d (attempt %d/%d) …",
             config.IOTDB_HOST,
             config.IOTDB_PORT,
             retries + 1,
-            max_retries
+            max_retries,
         )
         if iotdb_client.connect():
+            logger.info("IoTDB connected")
             break
         retries += 1
         if retries >= max_retries:
-            logger.error("Could not connect to IoTDB after maximum retries.")
+            logger.error("Could not connect to IoTDB after %d attempts", max_retries)
             return False
         time.sleep(delay)
 
-    # Initialize Schema on IoTDB
-    if running and iotdb_client.is_connected():
-        logger.info("Initializing IoTDB schema...")
-        if not iotdb_client.initialize_schema():
-            logger.error("Failed to initialize IoTDB schema")
-            return False
+    if not _running:
+        return False
+
+    # ---- Schema init ----------------------------------------------------------
+    logger.info("Initialising IoTDB schema …")
+    if not iotdb_client.initialize_schema():
+        logger.error("Failed to initialise IoTDB schema")
+        return False
 
     return True
 
 
-def main():
-    """Main execution loop for the bridge."""
-    logger.info("Starting Zenoh-to-IoTDB bridge service...")
-    
-    # Perform initial connection
-    if not connect_services():
-        logger.error("Initialization failed. Exiting.")
+# ---------------------------------------------------------------------------
+# Main loop
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    """Main entry point for the bridge service."""
+    logger.info("Starting Zenoh-to-IoTDB bridge service …")
+
+    if not _connect_services():
+        logger.error("Initial connection setup failed – exiting")
         sys.exit(1)
 
-    # Initial subscription
     logger.info("Declaring subscriber on key expression: %s", config.ZENOH_KEY_EXPRESSION)
-    sub = zenoh_client.get_subscriber(config.ZENOH_KEY_EXPRESSION, sample_callback)
-    if not sub:
-        logger.error("Failed to subscribe to key expression. Exiting.")
+    subscriber = zenoh_client.get_subscriber(config.ZENOH_KEY_EXPRESSION, _sample_callback)
+    if subscriber is None:
+        logger.error("Failed to declare Zenoh subscriber – exiting")
         sys.exit(1)
 
-    logger.info("Bridge is actively running and subscribing.")
+    logger.info("Bridge is running.  Waiting for Zenoh messages …")
 
-    # Keep service alive and monitor connectivity
     try:
-        while running:
-            # Check connection status
+        while _running:
+            # Periodic health-check; reconnect if a connection was lost
             if not zenoh_client.is_connected() or not iotdb_client.is_connected():
-                logger.warning("Connection lost. Initiating reconnect loop...")
-                
-                # Cleanup existing client handles
+                logger.warning("A connection was lost – initiating reconnect …")
                 zenoh_client.close()
                 iotdb_client.close()
-                
-                if connect_services():
-                    # Re-subscribe
-                    logger.info("Reconnected. Declaring subscriber on key expression: %s", config.ZENOH_KEY_EXPRESSION)
-                    sub = zenoh_client.get_subscriber(config.ZENOH_KEY_EXPRESSION, sample_callback)
-                    if not sub:
-                        logger.error("Failed to re-subscribe after connection recovery.")
+
+                if _connect_services():
+                    logger.info("Reconnected.  Re-declaring subscriber on %s", config.ZENOH_KEY_EXPRESSION)
+                    subscriber = zenoh_client.get_subscriber(
+                        config.ZENOH_KEY_EXPRESSION, _sample_callback
+                    )
+                    if subscriber is None:
+                        logger.error("Failed to re-subscribe after reconnect")
                 else:
-                    logger.warning("Failed to reconnect during this cycle. Will retry in 5s.")
-                    
+                    logger.warning("Reconnect attempt failed – will retry in %ds", 5)
+
             time.sleep(1.0)
     except KeyboardInterrupt:
-        logger.info("Interrupted by keyboard.")
+        logger.info("KeyboardInterrupt received")
     finally:
-        logger.info("Cleaning up connections...")
+        logger.info("Cleaning up connections …")
         zenoh_client.close()
         iotdb_client.close()
-        logger.info("Bridge stopped.")
+        logger.info("Bridge stopped cleanly")
 
 
 if __name__ == "__main__":
