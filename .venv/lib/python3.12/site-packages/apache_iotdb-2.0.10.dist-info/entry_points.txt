@@ -1,0 +1,2 @@
+[sqlalchemy.dialects]
+iotdb = iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect

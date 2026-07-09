@@ -1,188 +1,158 @@
-# ApacheCon 2022 IoT Demo
+# ApacheCon 2022 IoT Demo: Zenoh, Apache IoTDB & Panel
 
-This repository contains the code for an IoT demo showcasing integration with Apache IoTDB and **eclipse-zenoh** for data ingestion and visualization/control via a Python Panel application.
+This repository demonstrates an end-to-end, production-like IoT telemetry ingestion and visualization pipeline. It features a distributed architecture powered by **Eclipse Zenoh**, **Apache IoTDB**, and a **Panel + FastAPI** dashboard, all orchestrated via Docker Compose.
 
-This `feature/zenoh-api-upgrade` branch specifically focuses on upgrading the Zenoh API to the latest stable version.
+---
 
-## Architecture
+## Project Overview
 
-The demo consists of three main components running as separate processes on your local machine:
+The objective of this demo is to showcase how high-throughput sensor telemetry can be collected, bridged to a time-series database, and visualized in real-time.
 
-1.  **Zenoh Router (`zenohd`):** The core communication middleware enabling efficient data distribution.
-2.  **Apache IoTDB:** A high-performance time-series database optimized for IoT data.
-3.  **Panel Service (Python):** Your application that interacts with eclipse-zenoh to send/receive data, and with IoTDB to store and retrieve time-series data.
+- **Local Python Sensor Simulator**: Simulates a physical IoT machine sensor and publishes telemetry messages to a Zenoh broker.
+- **Zenoh Broker**: Connects the simulator, the database bridge, and the web portal.
+- **Zenoh-to-IoTDB Bridge**: Subscribes to the live Zenoh topic, validates incoming JSON data using Pydantic, and persists telemetry in Apache IoTDB.
+- **FastAPI + Panel Dashboard**: Visualizes the metrics through two logically independent widgets:
+  1. A real-time gauge and line chart receiving data directly from Zenoh.
+  2. A bar chart updating periodically by querying historical data from Apache IoTDB.
 
-All services communicate over `localhost`.
+---
+
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    Sensor[Local Python Sensor Simulator] -->|Zenoh publish tcp/localhost:7447| Zenoh[Zenoh Broker Container]
+    Zenoh -->|subscribe| Bridge[Zenoh-to-IoTDB Bridge Container]
+    Bridge -->|insert timeseries| IoTDB[Apache IoTDB Container]
+    Dashboard[FastAPI + Panel Dashboard Container] -->|subscribe live data| Zenoh
+    Dashboard -->|query historical data| IoTDB
+    User[Browser] -->|http://localhost:8080/panel| Dashboard
+```
+
+---
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed on your system:
+- **Docker** and **Docker Compose**
+- **Python 3.11+** or **3.12+** (for the local simulator and running test suites)
+- **pip** and **venv** python tools
 
-* **Git:** For cloning the repository.
-    * **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install git`
-    * **macOS:** `brew install git` (if Homebrew is installed) or install from [git-scm.com](https://git-scm.com/downloads)
-    * **Windows:** Install from [git-scm.com](https://git-scm.com/downloads)
-* **Python 3.9+ and pip:** For running the Panel service.
-    * **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install python3 python3-pip`
-    * **macOS:** `brew install python`
-    * **Windows:** Download installer from [python.org](https://www.python.org/downloads/)
-* **Java 8 or higher (JDK):** Required for Apache IoTDB.
-    * **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install openjdk-11-jdk` (or `openjdk-17-jdk`)
-    * **macOS:** `brew install openjdk@11` (or `openjdk@17`) and follow instructions to set `JAVA_HOME`.
-    * **Windows:** We recommend Azul Zulu OpenJDK or Amazon Corretto.
-      * Azul Zulu: [https://www.azul.com/downloads/?package=jdk](https://www.azul.com/downloads/?package=jdk)
-      * Amazon Corretto: [https://aws.amazon.com/corretto/](https://aws.amazon.com/corretto/)
-* **`curl` (optional, for Zenoh healthcheck):**
-    * Usually pre-installed on Linux/macOS.
-    * **Windows:** Available via Git Bash or can be installed separately.
+---
 
-## Deployment and Running Instructions (Command Line)
+## Quick Start
 
-Follow these steps in **separate terminal windows** for each service, or use background processes if you prefer.
+Follow these simple steps to run the complete environment:
 
-**1. Clone the Repository:**
+1. **Configure Environment Variables**:
+   Copy the example environment file to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
 
-Open your terminal or command prompt and clone the repository:
+2. **Spin Up the Containers**:
+   Launch the Docker Compose services in the background:
+   ```bash
+   make up
+   ```
+   *This starts the Zenoh broker, Apache IoTDB, the ingestion bridge, and the dashboard portal.*
 
-```bash
-git clone https://github.com/ottlukas/ApacheCon_2022_IoT.git
-cd ApacheCon_2022_IoT
-git checkout feature/zenoh-api-upgrade # Ensure you are on the correct branch
+3. **Install Local Python Environment**:
+   Initialize and activate a virtual environment, then install dependencies:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements-dev.txt
+   ```
+
+4. **Start the Sensor Simulator**:
+   Run the local telemetry simulator to start publishing data:
+   ```bash
+   make simulator
+   ```
+
+5. **Open the Dashboard**:
+   Navigate to the portal in your browser:
+   [http://localhost:8080/panel](http://localhost:8080/panel)
+
+---
+
+## Service URLs
+
+| Service / Port | Endpoint URL | Description |
+| :--- | :--- | :--- |
+| **FastAPI + Panel Dashboard** | [http://localhost:8080/panel](http://localhost:8080/panel) | Telemetry monitoring charts |
+| **Dashboard Health Check** | [http://localhost:8080/health](http://localhost:8080/health) | API Status Check |
+| **Dashboard Detailed Status** | [http://localhost:8080/api/status](http://localhost:8080/api/status) | Port and connection statistics |
+| **Zenoh TCP Protocol** | `localhost:7447` | Used by simulator and external clients |
+| **Zenoh REST API** | [http://localhost:8000](http://localhost:8000) | Zenoh Admin REST access |
+| **Apache IoTDB Thrift RPC** | `localhost:6667` | Database connections |
+
+---
+
+## Common Developer Commands
+
+The project includes a `Makefile` to simplify common operations:
+
+- `make up` - Start the containerized services (`zenoh`, `iotdb`, `bridge`, `dashboard`).
+- `make down` - Shut down and clean container instances, networks, and volumes.
+- `make simulator` - Launch the local sensor simulator loop.
+- `make integration-test` - Run all automated configurations and connectivity checks.
+- `make clean` - Clean up python temporary caches.
+
+---
+
+## Data Model
+
+### Zenoh Telemetry Payload (JSON)
+The simulator publishes JSON objects representing telemetry reading records:
+```json
+{
+  "sensor_id": "machine1-temperature",
+  "device": "machine1",
+  "measurement": "temperature",
+  "value": 23.4,
+  "unit": "celsius",
+  "timestamp": "2026-07-09T12:00:00.000Z"
+}
 ```
 
-**2. Start Zenoh Router (`zenohd`):**
+### Apache IoTDB Timeseries Path
+The bridge persists data into the following time series path:
+- `root.myfactory.machine1.temperature`
 
-Navigate to the repository's root directory. If you haven't already, make `zenohd-linux-x86_64` executable:
+---
 
+## Testing
+
+You can verify the stability and correctness of your setup using the test suite. 
+
+To run the tests:
 ```bash
-chmod +x zenohd-linux-x86_64
+make integration-test
 ```
 
-Then, run the Zenoh router:
+The tests cover:
+1. **Configuration**: Checking module defaults and environment overrides.
+2. **Zenoh Connection**: Verifying publishing and subscribing loopback.
+3. **IoTDB Connection**: Verifying schema creation, inserts, and queries.
+4. **Bridge Flow**: E2E check. Sending a message to Zenoh and asserting it is successfully bridged to IoTDB.
+5. **Dashboard Health**: Validating `/health` and `/api/status` API responses.
 
-```bash
-./zenohd-linux-x86_64
-```
-> **Note:** `zenohd-linux-x86_64` is a pre-compiled binary for Linux. Windows users would need a corresponding Windows binary if available, or to build Zenoh from source. This repository currently only provides the Linux binary.
+*Note: Integration tests (except configuration checks) require the Docker Compose stack to be running (`make up`). If the services are not running, integration tests will be skipped automatically.*
 
-You should see log output indicating the router has started, typically listening on `0.0.0.0:7447`.
+---
 
-**(Optional) Zenoh Health Check:**
-In a new terminal, you can check if Zenoh is running using `curl` (if installed):
-```bash
-curl http://localhost:8000/router/status
-# Expected output: {"status":"Router status: id=... uptime_ms=... sessions=... storages=... subscriptions=...}" (details may vary)
-```
+## Troubleshooting
 
-**3. Start Apache IoTDB:**
+- **Multicast Discovery Limits**: Docker multicast routing between host and containerized networks can be unstable. The sensor simulator is configured to bypass multicast and connect directly to Zenoh via `tcp/localhost:7447`.
+- **Database Startup Latencies**: Apache IoTDB can take 15–20 seconds to boot up. The ingestion bridge and test suites use intelligent reconnect and retry loops to prevent startup failures.
+- **Empty Charts**: If the dashboard charts are blank, verify that the simulator is running in your terminal (`make simulator`), and check the bridge container logs to verify database writes:
+  ```bash
+  docker compose logs -f zenoh-to-iotdb
+  ```
 
-Navigate to the `iotdb` subdirectory:
+---
 
-```bash
-cd iotdb
-```
+## Migration Notes (from old Local Setup)
 
-Download Apache IoTDB (if you haven't already). The script will place it in a versioned subdirectory (e.g., `apache-iotdb-2.0.0-server-bin`):
-```bash
-./download_iotdb.sh # You might need to chmod +x download_iotdb.sh first
-```
-> **Windows Note:** The `./download_iotdb.sh` script is for Linux/macOS. Windows users might need to run this script via WSL (Windows Subsystem for Linux) or Git Bash. Alternatively, you can download Apache IoTDB manually from the [Apache IoTDB website](https://iotdb.apache.org/download/) and extract it into the `iotdb` directory.
-
-Go into the IoTDB server directory (adjust version if needed):
-```bash
-cd apache-iotdb-*-server-bin # Or the specific version you downloaded
-```
-
-Start the IoTDB server:
-```bash
-# On Linux/macOS:
-./sbin/start-server.sh -c # Starts ConfigNode
-./sbin/start-server.sh -d # Starts DataNode
-
-# On Windows (in Command Prompt or PowerShell, from the apache-iotdb-X.X.X-server-bin directory):
-# sbin\start-server.bat -c
-# sbin\start-server.bat -d
-```
-> **Windows Note:** `.sh` scripts are for Linux/macOS. Windows users should use the corresponding `.bat` files (e.g., `start-server.bat`) located in the `sbin` directory of your IoTDB installation.
-
-Wait a few moments for IoTDB to initialize. You can check its logs in the `iotdb/logs` directory (relative to the repo root). Look for messages indicating successful startup.
-
-**4. Set up Python Environment and Install Dependencies:**
-
-Navigate back to the repository's root directory:
-```bash
-cd ../.. # From iotdb/apache-iotdb-X.X.X-server-bin
-# Or simply 'cd /path/to/ApacheCon_2022_IoT' if you know the full path
-```
-
-It's recommended to use a Python virtual environment:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate  # On Linux/macOS
-# .venv\Scripts\activate   # On Windows
-```
-
-Install the required Python packages:
-```bash
-pip install -r requirements.txt
-```
-
-**5. Run the Panel Application (MQTT & IoTDB Demo):**
-
-Ensure your Zenoh router and IoTDB are running.
-
-In the terminal where your virtual environment is active, run the Panel application:
-```bash
-python panel/panel_app.py
-```
-You should see log output from the Panel application indicating it's connecting to eclipse-zenoh and attempting to connect to IoTDB. The Panel UI should be accessible in your web browser (typically at `http://localhost:5006/panel_app`).
-
-## End-to-End Testing and Verification
-
-1.  **Open Panel UI:** Open `http://localhost:5006/panel_app` in your web browser.
-2.  **Observe Data Flow (Simulated Sensor):**
-    *   The `zenoh_producer.py` script (run as part of `panel_app.py` in this version if "Start External Producer" is checked or by default) simulates a sensor sending data (e.g., temperature) via eclipse-zenoh.
-    *   You should see this data appearing in the "Zenoh Subscriber Data" section of the Panel UI.
-    *   The Panel application also subscribes to this Zenoh topic and should display the received messages.
-3.  **Check IoTDB Storage:**
-    *   The Panel application is configured to store the received sensor data into Apache IoTDB.
-    *   In the Panel UI, use the "Fetch from IoTDB" button or similar control to query data from a specific time range.
-    *   Verify that the data shown matches what was observed from the eclipse-zenoh stream.
-4.  **Test Control Command (if applicable):**
-    *   If the demo includes a control aspect (e.g., sending a command back to a device via eclipse-zenoh from the Panel UI), test this functionality. Observe logs on both the Panel service and any simulated device/subscriber to confirm the command is sent and received. (This specific branch focuses on Zenoh API upgrade, so advanced control features might vary).
-
-## Key Log Indicators
-
-*   **`zenohd`:** Look for lines like `[INFO ] zenoh_router::service: Listener=[<ListenerConfig V4(0.0.0.0:7447, Tcp)>]`
-*   **Apache IoTDB:**
-    *   ConfigNode: `logs/log_confignode_all.log` - look for successful startup messages.
-    *   DataNode: `logs/log_datanode_all.log` - look for successful startup and registration with ConfigNode.
-*   **`panel_app.py`:**
-    *   `INFO:root:Successfully connected to eclipse-zenoh router`
-    *   `INFO:root:Session opened with IoTDB`
-    *   Log messages indicating data received from eclipse-zenoh and data being written/read from IoTDB.
-
-## Cleaning Up
-
-To stop the services:
-
-1.  **Panel Application:** Press `Ctrl+C` in the terminal where `panel_app.py` is running. Deactivate the virtual environment if you used one (`deactivate`).
-2.  **Apache IoTDB:**
-    ```bash
-    cd /path/to/ApacheCon_2022_IoT/iotdb/apache-iotdb-X.X.X-server-bin # Adjust path
-    # On Linux/macOS:
-    ./sbin/stop-server.sh # Stops DataNode and ConfigNode
-    # On Windows (in Command Prompt or PowerShell, from the apache-iotdb-X.X.X-server-bin directory):
-    # sbin\stop-server.bat
-    ```
-    > **Windows Note:** Use `sbin\stop-server.bat` on Windows.
-3.  **Zenoh Router:** Press `Ctrl+C` in the terminal where `zenohd-linux-x86_64` is running.
-
-## Troubleshooting Tips
-
-*   **Port Conflicts:** If a service fails to start, check if another application is using the required port (e.g., 7447 for Zenoh, 8000 for Zenoh REST API, 6667/9093 for IoTDB, 5006 for Panel).
-*   **Firewall:** Ensure your firewall is not blocking communication between the services on `localhost`.
-*   **Java Version/`JAVA_HOME`:** Double-check your Java installation and `JAVA_HOME` environment variable if IoTDB fails to start.
-*   **Python Dependencies:** Ensure all packages in `requirements.txt` are installed correctly in your active Python environment. The main dependencies are `eclipse-zenoh>=1.9.0` and `apache-iotdb>=2.0.0`.
-*   **Zenoh Version Compatibility:** This branch uses the new eclipse-zenoh API (1.9.0+). Ensure client libraries match the `zenohd` version if you are modifying components. The provided `zenohd-linux-x86_64` should work with the Python dependencies.
-*   **IoTDB Schema:** The `panel_app.py` typically attempts to create the necessary database and time series schema in IoTDB automatically. If you encounter IoTDB errors related to schema or storage groups, you might need to manually clear IoTDB's data directory (`iotdb/data`) and restart it, or use IoTDB's CLI to inspect/create schema.
+Starting Zenoh and Apache IoTDB services manually on your local system is no longer necessary. All core components run securely in Docker. Only the `sensor_simulator.py` script remains local to mimic an external physical device.

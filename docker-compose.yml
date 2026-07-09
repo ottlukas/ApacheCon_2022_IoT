@@ -1,106 +1,100 @@
-version: '3.9'
-
 services:
-  # Zenoh Router
-  zenohd:
-    image: eclipse/zenoh:latest
-    container_name: zenohd
+  # Zenoh Broker / Router
+  zenoh:
+    image: eclipse/zenoh:1.0.0
+    container_name: zenoh-broker
     ports:
-      - "7447:7447/tcp"    # Zenoh protocol TCP
+      - "7447:7447/tcp"    # Zenoh Protocol (TCP)
       - "8000:8000/tcp"    # Zenoh REST API
-    restart: unless-stopped
     environment:
       - RUST_LOG=info
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "7447"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    networks:
-      - iot-network
-
-  # Apache IoTDB 2.x
-  iotdb:
-    image: apache/iotdb:2.0.0-standalone
-    container_name: iotdb
-    ports:
-      - "6667:6667"      # IoTDB Thrift service
-      - "8181:8181"      # IoTDB HTTP service (if applicable)
+    command: ["--listen", "tcp/0.0.0.0:7447"]
     restart: unless-stopped
+    networks:
+      - apachecon-iot-net
+
+  # Apache IoTDB Database
+  iotdb:
+    image: apache/iotdb:1.3.3-standalone
+    container_name: iotdb-db
+    ports:
+      - "6667:6667/tcp"    # Thrift RPC
     environment:
       - JVM_XMS=512M
       - JVM_XMX=1G
     volumes:
-      - ./iotdb/data:/iotdb/data
-      - ./iotdb/logs:/iotdb/logs
-      - ./iotdb/conf:/iotdb/conf
+      - iotdb-data:/iotdb/data
+      - iotdb-logs:/iotdb/logs
     healthcheck:
       test: ["CMD", "bash", "-c", "echo 'show timeseries' | /iotdb/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
-    networks:
-      - iot-network
-
-  # API Service
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: api
-    depends_on:
-      zenohd:
-        condition: service_healthy
-      iotdb:
-        condition: service_healthy
-    ports:
-      - "8080:8080"      # API port
-    environment:
-      - ZENOH_ROUTER_ENDPOINT=tcp://zenohd:7447
-      - IOTDB_HOST=iotdb
-      - IOTDB_PORT=6667
-      - IOTDB_USERNAME=root
-      - IOTDB_PASSWORD=root
-      - API_HOST=0.0.0.0
-      - API_PORT=8080
+      start_period: 20s
     restart: unless-stopped
     networks:
-      - iot-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      - apachecon-iot-net
 
-  # Panel Dashboard (optional)
-  panel:
+  # Zenoh-to-IoTDB Bridge
+  zenoh-to-iotdb:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: panel
+      dockerfile: Dockerfile.bridge
+    container_name: zenoh-iotdb-bridge
     depends_on:
-      zenohd:
-        condition: service_healthy
+      zenoh:
+        condition: service_started
       iotdb:
         condition: service_healthy
-    ports:
-      - "5006:5006"      # Panel port
     environment:
-      - ZENOH_ROUTER_ENDPOINT=tcp://zenohd:7447
+      - ZENOH_ENDPOINT=tcp/zenoh:7447
+      - ZENOH_KEY_EXPRESSION=${ZENOH_KEY_EXPRESSION:-/myfactory/machine1/temperature}
       - IOTDB_HOST=iotdb
       - IOTDB_PORT=6667
-      - IOTDB_USERNAME=root
-      - IOTDB_PASSWORD=root
-    command: ["panel", "serve", "panel_script.py", "--host", "0.0.0.0", "--port", "5006", "--autoreload"]
+      - IOTDB_USER=${IOTDB_USER:-root}
+      - IOTDB_PASSWORD=${IOTDB_PASSWORD:-root}
+      - IOTDB_DATABASE=${IOTDB_DATABASE:-root.myfactory}
+      - IOTDB_DEVICE=${IOTDB_DEVICE:-root.myfactory.machine1}
+      - IOTDB_MEASUREMENT=${IOTDB_MEASUREMENT:-temperature}
     restart: unless-stopped
     networks:
-      - iot-network
-    profiles:
-      - dashboard
+      - apachecon-iot-net
+
+  # FastAPI + Panel Dashboard Portal
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: iot-dashboard
+    ports:
+      - "${DASHBOARD_PORT:-8080}:8080"
+    depends_on:
+      zenoh:
+        condition: service_started
+      iotdb:
+        condition: service_healthy
+    environment:
+      - ZENOH_ENDPOINT=tcp/zenoh:7447
+      - ZENOH_KEY_EXPRESSION=${ZENOH_KEY_EXPRESSION:-/myfactory/machine1/temperature}
+      - IOTDB_HOST=iotdb
+      - IOTDB_PORT=6667
+      - IOTDB_USER=${IOTDB_USER:-root}
+      - IOTDB_PASSWORD=${IOTDB_PASSWORD:-root}
+      - IOTDB_DATABASE=${IOTDB_DATABASE:-root.myfactory}
+      - IOTDB_DEVICE=${IOTDB_DEVICE:-root.myfactory.machine1}
+      - IOTDB_MEASUREMENT=${IOTDB_MEASUREMENT:-temperature}
+      - DASHBOARD_PORT=8080
+    restart: unless-stopped
+    networks:
+      - apachecon-iot-net
 
 networks:
-  iot-network:
+  apachecon-iot-net:
+    name: apachecon-iot-net
     driver: bridge
+
+volumes:
+  iotdb-data:
+    name: iotdb-data
+  iotdb-logs:
+    name: iotdb-logs
