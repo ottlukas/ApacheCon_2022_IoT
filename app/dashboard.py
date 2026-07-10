@@ -5,11 +5,13 @@ import collections
 import json
 import logging
 from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import panel as pn
 
 from app import config
-from app.zenoh_client import decode_payload
+from app.zenoh_client import ZenohClient, decode_payload
+from app.iotdb_client import IoTDBClient
 
 logger = logging.getLogger("dashboard")
 
@@ -20,110 +22,69 @@ pn.extension("echarts", sizing_mode="stretch_width", template="fast", theme="dar
 ACCENT = "orange"
 pn.state.template.param.update(
     site="Apache Con 2022",
-    title="IoT Stream Analysis Dashboard",
+    title="IoT Live Stream & Historical Dashboard",
     sidebar_width=250,
     accent_base_color=ACCENT,
     header_background=ACCENT,
     font="Montserrat",
 )
 
-
 # ---------------------------------------------------------------------------
-# Dashboard factory
+# ECharts helper
 # ---------------------------------------------------------------------------
-
-
-def create_dashboard(zenoh_client, iotdb_client) -> pn.layout.Column:
-    """Create the Panel dashboard layout.
-
-    Called once per browser session by the Panel/FastAPI integration.
-
-    Args:
-        zenoh_client: Connected :class:`~app.zenoh_client.ZenohClient` instance.
-        iotdb_client: Connected :class:`~app.iotdb_client.IoTDBClient` instance.
-
-    Returns:
-        The main Panel layout component.
-    """
-    # -----------------------------------------------------------------------
-    # State shared between the Zenoh callback thread and Panel callbacks
-    # -----------------------------------------------------------------------
-    zenoh_history: collections.deque = collections.deque(maxlen=30)
-    # Use a mutable container so the nested functions can mutate the value
-    state = {"current_temp": 0.0, "last_update": "Never"}
-
-    # -----------------------------------------------------------------------
-    # ECharts – Gauge
-    # -----------------------------------------------------------------------
-    gauge_config = {
-        "tooltip": {"formatter": "{a} <br/>{b} : {c}°C"},
+def create_echarts_option(
+    title: str,
+    x_data: List[str],
+    y_data: List[float],
+    series_name: str,
+    color: str,
+) -> Dict[str, Any]:
+    """Create ECharts configuration dictionary for a line chart."""
+    return {
+        "title": {
+            "text": title,
+            "textStyle": {"color": "#ffffff", "fontSize": 16},
+            "left": "center",
+        },
+        "tooltip": {
+            "trigger": "axis",
+            "axisPointer": {"type": "cross"},
+        },
+        "xAxis": {
+            "type": "category",
+            "data": x_data,
+            "axisLabel": {"color": "#aaaaaa"},
+            "axisLine": {"lineStyle": {"color": "#555555"}},
+        },
+        "yAxis": {
+            "type": "value",
+            "scale": True,
+            "axisLabel": {"color": "#aaaaaa"},
+            "axisLine": {"lineStyle": {"color": "#555555"}},
+            "splitLine": {"lineStyle": {"color": "#333333"}},
+        },
         "series": [
             {
-                "name": "Current Temperature",
-                "type": "gauge",
-                "min": 0,
-                "max": 50,
-                "detail": {"formatter": "{value}°C"},
-                "data": [{"value": 0.0, "name": "Temp"}],
-            }
-        ],
-    }
-
-    # -----------------------------------------------------------------------
-    # ECharts – Zenoh real-time line chart
-    # -----------------------------------------------------------------------
-    zenoh_chart_config = {
-        "title": {"text": "Zenoh Live Stream (Real-Time)"},
-        "tooltip": {"trigger": "axis"},
-        "xAxis": {"type": "category", "data": []},
-        "yAxis": {"type": "value", "scale": True},
-        "series": [
-            {
-                "name": "Temperature",
+                "name": series_name,
                 "type": "line",
-                "data": [],
+                "data": y_data,
                 "smooth": True,
-                "itemStyle": {"color": "#ff9800"},
+                "showSymbol": True,
+                "itemStyle": {"color": color},
+                "lineStyle": {"width": 3},
             }
         ],
+        "backgroundColor": "transparent",
     }
 
-    # -----------------------------------------------------------------------
-    # ECharts – IoTDB historical bar chart
-    # -----------------------------------------------------------------------
-    iotdb_chart_config = {
-        "title": {"text": "Apache IoTDB Historical (Periodic Query)"},
-        "tooltip": {"trigger": "axis"},
-        "xAxis": {"type": "category", "data": []},
-        "yAxis": {"type": "value", "scale": True},
-        "series": [
-            {
-                "name": "Temperature",
-                "type": "bar",
-                "data": [],
-                "itemStyle": {"color": "#2196f3"},
-            }
-        ],
-    }
-
-    # -----------------------------------------------------------------------
-    # Panel panes
-    # -----------------------------------------------------------------------
-    gauge_pane = pn.pane.ECharts(gauge_config, width=300, height=300)
-    zenoh_chart_pane = pn.pane.ECharts(zenoh_chart_config, height=350)
-    iotdb_chart_pane = pn.pane.ECharts(iotdb_chart_config, height=350)
-    status_pane = pn.pane.Markdown("### Initialising …")
-
-    # -----------------------------------------------------------------------
-    # Zenoh subscriber callback  (runs in a Zenoh background thread)
-    # -----------------------------------------------------------------------
-    def on_zenoh_message(sample) -> None:
-        """Parse incoming Zenoh JSON payload and buffer it for the UI."""
-        payload_str = decode_payload(sample)
-        if payload_str is None:
-            return
-        try:
-            data = json.loads(payload_str)
+# ---------------------------------------------------------------------------
+# Payload Parsing
+# ---------------------------------------------------------------------------
+def parse_zenoh_payload(payload_str: str) -> Tuple[float, str]:
+    """Parse payload string into value and timestamp."""
+    try:
+        data = json.loads(payload_str)
+        if isinstance(data, dict):
             val = float(data.get("value", 0.0))
             ts_raw = data.get("timestamp", "")
             if ts_raw:
@@ -134,111 +95,197 @@ def create_dashboard(zenoh_client, iotdb_client) -> pn.layout.Column:
                     ts_display = ts_raw
             else:
                 ts_display = datetime.now().strftime("%H:%M:%S")
+            return val, ts_display
+    except (json.JSONDecodeError, TypeError, ValueError):
+        pass
 
-            state["current_temp"] = val
-            state["last_update"] = ts_display
-            zenoh_history.append((ts_display, val))
-        except Exception as exc:
-            logger.error("Error parsing Zenoh message in dashboard: %s", exc)
+    # Fallback to parsing raw float value
+    val = float(payload_str)
+    ts_display = datetime.now().strftime("%H:%M:%S")
+    return val, ts_display
 
-    # Register the persistent subscriber if the client is up
-    if zenoh_client.is_connected():
-        logger.info(
-            "Registering dashboard Zenoh subscriber on %s", config.ZENOH_KEY_EXPRESSION
-        )
-        zenoh_client.get_subscriber(config.ZENOH_KEY_EXPRESSION, on_zenoh_message)
-    else:
-        logger.warning("Zenoh not connected – live chart will be empty until reconnected")
+# ---------------------------------------------------------------------------
+# Dashboard factory
+# ---------------------------------------------------------------------------
+def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn.layout.Column:
+    """Create the Panel dashboard layout.
 
-    # -----------------------------------------------------------------------
-    # Periodic UI refresh callbacks  (run in Panel's ioloop)
-    # -----------------------------------------------------------------------
+    Called once per browser session by the Panel/FastAPI integration.
+    """
+    buffer_size = 100
+    zenoh_points: collections.deque = collections.deque(maxlen=buffer_size)
+    
+    state = {
+        "last_zenoh_val": None,
+        "last_zenoh_timestamp": "N/A",
+        "last_iotdb_refresh": "N/A",
+        "last_iotdb_error": "",
+        "subscribed": False,
+    }
 
-    def _refresh_zenoh_ui() -> None:
-        gauge_pane.data["series"][0]["data"][0]["value"] = round(state["current_temp"], 2)
-        gauge_pane.param.trigger("data")
+    # ECharts Panes
+    zenoh_chart_pane = pn.pane.ECharts(
+        create_echarts_option("Live Zenoh Stream", [], [], "Temperature", "#ff9800"),
+        height=400,
+        sizing_mode="stretch_width",
+    )
 
-        times = [item[0] for item in zenoh_history]
-        temps = [item[1] for item in zenoh_history]
-        zenoh_chart_pane.data["xAxis"]["data"] = times
-        zenoh_chart_pane.data["series"][0]["data"] = temps
-        zenoh_chart_pane.param.trigger("data")
+    iotdb_chart_pane = pn.pane.ECharts(
+        create_echarts_option("Live IoTDB Time Series", [], [], "Temperature", "#2196f3"),
+        height=400,
+        sizing_mode="stretch_width",
+    )
 
-    def _refresh_iotdb_ui() -> None:
-        if not iotdb_client.is_connected():
+    # Status indicators
+    zenoh_status_pane = pn.pane.Markdown("### Zenoh Status\n🔴 Disconnected")
+    iotdb_status_pane = pn.pane.Markdown("### IoTDB Status\n🔴 Disconnected")
+
+    # Subscriber callback
+    def on_zenoh_message(sample: Any) -> None:
+        payload_str = decode_payload(sample)
+        if payload_str is None:
             return
         try:
-            records = iotdb_client.query_temperature(limit=20)
-            records.reverse()  # chronological left-to-right
-
-            times = []
-            temps = []
-            for rec in records:
-                ts_raw = rec.get("timestamp", "")
-                if ts_raw:
-                    try:
-                        if str(ts_raw).isdigit():
-                            dt = datetime.fromtimestamp(int(ts_raw) / 1000.0)
-                        else:
-                            dt = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
-                        ts_display = dt.strftime("%H:%M:%S")
-                    except Exception:
-                        ts_display = str(ts_raw)
-                else:
-                    ts_display = ""
-                times.append(ts_display)
-                temps.append(rec.get("temperature", 0.0))
-
-            iotdb_chart_pane.data["xAxis"]["data"] = times
-            iotdb_chart_pane.data["series"][0]["data"] = temps
-            iotdb_chart_pane.param.trigger("data")
+            val, ts_display = parse_zenoh_payload(payload_str)
+            state["last_zenoh_val"] = val
+            state["last_zenoh_timestamp"] = ts_display
+            zenoh_points.append((ts_display, val))
         except Exception as exc:
-            logger.error("Error refreshing IoTDB chart: %s", exc)
+            logger.error("Error parsing Zenoh message in dashboard callback: %s", exc)
 
-    def _refresh_status() -> None:
+    # Start Zenoh Subscription helper
+    def try_subscribe():
+        if zenoh_client.is_connected() and not state["subscribed"]:
+            sub = zenoh_client.get_subscriber(config.ZENOH_KEY_EXPRESSION, on_zenoh_message)
+            if sub is not None:
+                state["subscribed"] = True
+                logger.info("Successfully subscribed to Zenoh: %s", config.ZENOH_KEY_EXPRESSION)
+
+    # UI updates callbacks
+    def refresh_zenoh_ui() -> None:
         z_ok = zenoh_client.is_connected()
+        
+        if z_ok:
+            if not state["subscribed"]:
+                try_subscribe()
+            
+            val_str = f"{state['last_zenoh_val']} °C" if state['last_zenoh_val'] is not None else "N/A"
+            zenoh_status_pane.object = f"""### Zenoh Status
+🟢 Connected
+* **Last Message**: {val_str}
+* **Time Received**: {state['last_zenoh_timestamp']}
+* **Key Expression**: `{config.ZENOH_KEY_EXPRESSION}`"""
+        else:
+            state["subscribed"] = False
+            zenoh_status_pane.object = f"""### Zenoh Status
+🔴 Disconnected
+* **Endpoint**: `{config.ZENOH_ENDPOINT}`
+* Waiting for reconnect from lifespan..."""
+
+        # Update chart
+        if zenoh_points:
+            times = [pt[0] for pt in zenoh_points]
+            values = [pt[1] for pt in zenoh_points]
+            zenoh_chart_pane.data["xAxis"]["data"] = times
+            zenoh_chart_pane.data["series"][0]["data"] = values
+            zenoh_chart_pane.param.trigger("data")
+
+    def refresh_iotdb_ui() -> None:
         i_ok = iotdb_client.is_connected()
-        status_pane.object = f"""
-### Connection Status
-* **Zenoh Broker**: {"🟢 Connected" if z_ok else "🔴 Disconnected"}
-* **Apache IoTDB**: {"🟢 Connected" if i_ok else "🔴 Disconnected"}
+        
+        if not i_ok:
+            iotdb_status_pane.object = f"""### IoTDB Status
+🔴 Disconnected
+* **Host**: `{config.IOTDB_HOST}:{config.IOTDB_PORT}`
+* Waiting for reconnect from lifespan..."""
+            return
 
-### Telemetry Metadata
-* **Last Value**: {state["current_temp"]}°C
-* **Last Update**: {state["last_update"]}
-* **Key Expression**: `{config.ZENOH_KEY_EXPRESSION}`
-"""
+        # Query recent values
+        try:
+            records = iotdb_client.query_temperature(limit=buffer_size)
+            state["last_iotdb_refresh"] = datetime.now().strftime("%H:%M:%S")
+            state["last_iotdb_error"] = ""
+            
+            if records:
+                iotdb_status_pane.object = f"""### IoTDB Status
+🟢 Connected
+* **Latest Value**: {records[0].get('temperature')} °C
+* **Last Query**: {state['last_iotdb_refresh']}
+* **Timeseries Path**: `{config.IOTDB_DEVICE}.{config.IOTDB_MEASUREMENT}`"""
+                
+                # Update ECharts UI
+                times = []
+                values = []
+                for pt in reversed(records):
+                    ts_raw = pt.get("timestamp", "")
+                    if ts_raw:
+                        try:
+                            if str(ts_raw).isdigit():
+                                dt = datetime.fromtimestamp(int(ts_raw) / 1000.0)
+                            else:
+                                dt = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
+                            ts_display = dt.strftime("%H:%M:%S")
+                        except Exception:
+                            ts_display = str(ts_raw)
+                    else:
+                        ts_display = ""
+                    times.append(ts_display)
+                    values.append(pt.get("temperature", 0.0))
+                
+                iotdb_chart_pane.data["xAxis"]["data"] = times
+                iotdb_chart_pane.data["series"][0]["data"] = values
+                iotdb_chart_pane.param.trigger("data")
+            else:
+                iotdb_status_pane.object = f"""### IoTDB Status
+🟢 Connected (No Data)
+* **Last Query Attempt**: {state['last_iotdb_refresh']}
+* **Timeseries Path**: `{config.IOTDB_DEVICE}.{config.IOTDB_MEASUREMENT}`"""
+        except Exception as exc:
+            state["last_iotdb_error"] = str(exc)
+            iotdb_status_pane.object = f"""### IoTDB Status
+⚠️ Connected (Query Error: {exc})
+* **Last Query Attempt**: {state['last_iotdb_refresh']}"""
 
-    pn.state.add_periodic_callback(_refresh_zenoh_ui, 500)
-    pn.state.add_periodic_callback(_refresh_iotdb_ui, 2000)
-    pn.state.add_periodic_callback(_refresh_status, 1000)
+    # Initial subscription attempt
+    try_subscribe()
 
-    # -----------------------------------------------------------------------
-    # Sidebar
-    # -----------------------------------------------------------------------
+    # Periodic UI update registration
+    pn.state.add_periodic_callback(refresh_zenoh_ui, 1000)
+    pn.state.add_periodic_callback(refresh_iotdb_ui, 2000)
+
+    # Sidebar elements
     logo_path = "/app/app/asf-estd-1999-logo.jpg"
     pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True).servable(area="sidebar")
-    status_pane.servable(area="sidebar")
+    pn.pane.Markdown(
+        f"""# System Settings
+* **Zenoh Key**: `{config.ZENOH_KEY_EXPRESSION}`
+* **Zenoh Endpoint**: `{config.ZENOH_ENDPOINT}`
+* **IoTDB Host**: `{config.IOTDB_HOST}:{config.IOTDB_PORT}`
+* **IoTDB Device**: `{config.IOTDB_DEVICE}`
+"""
+    ).servable(area="sidebar")
 
-    # -----------------------------------------------------------------------
-    # Main layout
-    # -----------------------------------------------------------------------
+    # Main dashboard assembly
+    description = pn.pane.Markdown(
+        "This interactive dashboard visualizes telemetry data streams from two independent live sources: "
+        "real-time data direct from Eclipse Zenoh, and persisted historical records from Apache IoTDB."
+    )
+
+    status_row = pn.Row(
+        pn.Card(zenoh_status_pane, title="Zenoh Connection", margin=5, sizing_mode="stretch_width"),
+        pn.Card(iotdb_status_pane, title="Apache IoTDB Connection", margin=5, sizing_mode="stretch_width"),
+        sizing_mode="stretch_width",
+    )
+
+    chart_row = pn.Row(
+        pn.Card(zenoh_chart_pane, title="Live Zenoh Stream", margin=5, sizing_mode="stretch_width"),
+        pn.Card(iotdb_chart_pane, title="Live IoTDB Time Series", margin=5, sizing_mode="stretch_width"),
+        sizing_mode="stretch_width",
+    )
+
     return pn.Column(
-        pn.Row(
-            pn.Card(gauge_pane, title="Current Reading", margin=10, width=320),
-            pn.Card(
-                zenoh_chart_pane,
-                title="Real-Time Data (Zenoh)",
-                margin=10,
-                sizing_mode="stretch_width",
-            ),
-        ),
-        pn.Row(
-            pn.Card(
-                iotdb_chart_pane,
-                title="Historical Data (IoTDB)",
-                margin=10,
-                sizing_mode="stretch_width",
-            )
-        ),
+        description,
+        status_row,
+        chart_row,
+        sizing_mode="stretch_width",
     )

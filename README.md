@@ -89,6 +89,51 @@ Follow these simple steps to run the complete environment:
 
 ---
 
+## Run the Live Dashboard (Standalone)
+
+You can run the Panel dashboard locally on your host machine to visualize both the real-time Zenoh stream and the persisted Apache IoTDB database values.
+
+### Step-by-Step Instructions
+
+1. **Start Zenoh Router, Apache IoTDB & Bridge**
+   Spin up the containerized Zenoh broker, Apache IoTDB, and the ingestion bridge:
+   ```bash
+   docker compose up -d zenoh iotdb zenoh-to-iotdb
+   ```
+   *(Note: The database container will initialize and run its internal health check. It takes ~20 seconds to be fully ready.
+   The `zenoh-to-iotdb` bridge subscribes to Zenoh and writes values into IoTDB — without it the IoTDB chart will remain empty.)*
+
+2. **Prepare Python Environment**
+   Activate your virtual environment and make sure dependencies are installed:
+   ```bash
+   source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
+   pip install -r requirements.txt
+   ```
+
+3. **Start the Zenoh Producer**
+   Run the standalone educational sensor simulator to start publishing telemetry:
+   ```bash
+   python zenoh_producer.py
+   ```
+   *(This starts publishing JSON telemetry readings to `myfactory/machine1/temperature` at a 1-second interval).*
+
+4. **Start the Panel Dashboard**
+   Launch the Panel application directly:
+   ```bash
+   panel serve panel_script.py --autoreload --show
+   ```
+   *This will open the dashboard in your default browser at [http://localhost:5006/panel_script](http://localhost:5006/panel_script).*
+
+### Default Configuration Values
+The standalone dashboard and helper scripts use the following default configurations (can be overridden via environment variables or `.env`):
+- **Zenoh Router Endpoint**: `tcp/localhost:7447` (configurable via `ZENOH_HOST_ENDPOINT`)
+- **Zenoh Subscription Key**: `myfactory/machine1/temperature` (configurable via `ZENOH_KEY_EXPRESSION`)
+- **Apache IoTDB Host/Port**: `127.0.0.1:6667` (configurable via `IOTDB_HOST`/`IOTDB_PORT`)
+- **Apache IoTDB Path**: `root.myfactory.machine1.temperature` (configurable via `IOTDB_DEVICE`/`IOTDB_MEASUREMENT`)
+- **UI Refresh Rates**: 1000 ms for Zenoh Stream, 2000 ms for IoTDB query.
+
+---
+
 ## Common Developer Commands
 
 The project includes a `Makefile` to simplify common operations:
@@ -146,10 +191,11 @@ The tests cover:
 
 - **Multicast Discovery Limits**: Docker multicast routing between host and containerized networks can be unstable. The sensor simulator is configured to bypass multicast and connect directly to Zenoh via `tcp/localhost:7447`.
 - **Database Startup Latencies**: Apache IoTDB can take 15–20 seconds to boot up. The ingestion bridge and test suites use intelligent reconnect and retry loops to prevent startup failures.
-- **Empty Charts**: If the dashboard charts are blank, verify that the simulator is running in your terminal (`make simulator`), and check the bridge container logs to verify database writes:
-  ```bash
-  docker compose logs -f zenoh-to-iotdb
-  ```
+- **Empty Charts / No Zenoh Data**: If the Zenoh chart is blank, verify that the simulator is running in your terminal (`python zenoh_producer.py` or `make simulator`) and publishing to the exact same key expression (`myfactory/machine1/temperature`) and endpoint (`tcp/localhost:7447`).
+- **Empty Charts / No IoTDB Data**: Ensure the database bridge container is running to persist Zenoh data to IoTDB (`docker compose ps` and `docker compose logs -f zenoh-to-iotdb`).
+- **IoTDB Connection Refused**: Verify Apache IoTDB is fully up and listening on port `6667`. Check container status with `docker compose ps` and ensure no other process is bound to port `6667` on the host.
+- **Zenoh Subscriber Receives No Samples**: Ensure the publisher is connecting to the correct broker IP/port and is using the exact same key expression (without a leading slash, as Zenoh 1.x path expressions must not start with `/`).
+- **ECharts Pane Does Not Update**: Make sure you did not modify the chart data dictionary without triggering the change event. If updating values, always call `chart_pane.param.trigger('data')` to force a browser refresh.
 
 ---
 

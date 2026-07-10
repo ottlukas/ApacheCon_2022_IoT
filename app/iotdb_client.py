@@ -5,6 +5,8 @@ Provides wrapper for Apache IoTDB operations, supporting IoTDB 2.x API.
 """
 
 import logging
+import time
+from datetime import datetime
 from typing import Optional, List, Any, Dict
 from app import config
 
@@ -117,7 +119,7 @@ class IoTDBClient:
                 logger.debug("Database %s created", self._database)
             except Exception as e:
                 # Handle cases where storage group already exists
-                if "already exists" in str(e).lower():
+                if "already" in str(e).lower():
                     logger.debug("Database %s already exists", self._database)
                 else:
                     raise e
@@ -129,7 +131,7 @@ class IoTDBClient:
                 self._session.execute_non_query_statement(create_ts_sql)
                 logger.debug("Timeseries %s created", full_ts_path)
             except Exception as e:
-                if "already exist" in str(e).lower():
+                if "already" in str(e).lower():
                     logger.debug("Timeseries %s already exists", full_ts_path)
                 else:
                     raise e
@@ -154,14 +156,25 @@ class IoTDBClient:
             return False
 
         try:
-            # Convert timestamp to a format IoTDB SQL accepts
-            if isinstance(timestamp, (int, float)):
-                timestamp_val = str(int(timestamp))
-            elif str(timestamp).isdigit():
-                timestamp_val = str(timestamp)
-            else:
-                # String timestamp (e.g. ISO format) needs quotes in query
-                timestamp_val = f"'{timestamp}'"
+            # Convert timestamp to epoch milliseconds for robustness in IoTDB
+            try:
+                if isinstance(timestamp, (int, float)):
+                    if timestamp < 9999999999:  # epoch in seconds
+                        ms_val = int(timestamp * 1000)
+                    else:
+                        ms_val = int(timestamp)
+                elif str(timestamp).isdigit():
+                    ms_val = int(timestamp)
+                    if ms_val < 9999999999:
+                        ms_val *= 1000
+                else:
+                    ts_clean = str(timestamp).replace("Z", "+00:00")
+                    dt = datetime.fromisoformat(ts_clean)
+                    ms_val = int(dt.timestamp() * 1000)
+                timestamp_val = str(ms_val)
+            except Exception as ts_exc:
+                logger.warning("Failed to parse timestamp '%s', falling back to current time: %s", timestamp, ts_exc)
+                timestamp_val = str(int(time.time() * 1000))
 
             # SQL insert statement
             full_path = f"{self._device}"

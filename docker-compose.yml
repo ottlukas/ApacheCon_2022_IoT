@@ -68,7 +68,7 @@ services:
         condition: service_healthy
     environment:
       - ZENOH_ENDPOINT=tcp/zenoh:7447
-      - ZENOH_KEY_EXPRESSION=${ZENOH_KEY_EXPRESSION:-/myfactory/machine1/temperature}
+      - ZENOH_KEY_EXPRESSION=${ZENOH_KEY_EXPRESSION:-myfactory/machine1/temperature}
       - IOTDB_HOST=iotdb
       - IOTDB_PORT=6667
       - IOTDB_USER=${IOTDB_USER:-root}
@@ -99,7 +99,7 @@ services:
         condition: service_healthy
     environment:
       - ZENOH_ENDPOINT=tcp/zenoh:7447
-      - ZENOH_KEY_EXPRESSION=${ZENOH_KEY_EXPRESSION:-/myfactory/machine1/temperature}
+      - ZENOH_KEY_EXPRESSION=${ZENOH_KEY_EXPRESSION:-myfactory/machine1/temperature}
       - IOTDB_HOST=iotdb
       - IOTDB_PORT=6667
       - IOTDB_USER=${IOTDB_USER:-root}
