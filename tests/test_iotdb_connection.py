@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """Integration tests for Apache IoTDB connectivity."""
 
-import pytest
 import time
+
+import pytest
+
 from app.iotdb_client import IoTDBClient
 from app import config
 
@@ -23,7 +25,7 @@ def iotdb_client():
     )
     if not connected:
         pytest.skip("Apache IoTDB is not running at localhost:6667. Integration tests skipped.")
-    
+
     # Configure client to use test path schema
     client._database = TEST_DATABASE
     client._device = TEST_DEVICE
@@ -60,7 +62,7 @@ def test_iotdb_insert_and_query(iotdb_client):
     # Query
     records = iotdb_client.query_temperature(limit=1)
     assert len(records) > 0
-    
+
     # Assert latest record matches what we inserted
     latest = records[0]
     assert float(latest["temperature"]) == test_temp

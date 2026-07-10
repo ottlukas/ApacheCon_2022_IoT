@@ -35,9 +35,9 @@ jobs:
     - name: Run linting
       run: |
         pip install pylint
-        pylint src/ tests/ --disable=C0114,C0115,C0116,W0613
+        pylint app/ tests/ --disable=C0114,C0115,C0116,W0613,W0621,W0212
     
     - name: Check code formatting
       run: |
         pip install black
-        black --check src/ tests/
+        black --check app/ tests/

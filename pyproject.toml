@@ -69,6 +69,8 @@ disable = [
     "C0115",  # missing-class-docstring
     "C0116",  # missing-function-docstring
     "W0613",  # unused-argument
+    "W0621",  # redefined-outer-name (pytest fixtures)
+    "W0212",  # protected-access (needed in tests)
 ]
 
 [tool.mypy]

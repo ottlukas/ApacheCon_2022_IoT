@@ -15,6 +15,7 @@ Test strategy:
 
 import json
 import time
+from datetime import datetime, timezone
 
 import pytest
 
@@ -95,8 +96,3 @@ def test_bridge_flow(bridge_flow_services):
         "'docker compose logs -f zenoh-to-iotdb'"
     )
 
-
-# ---------------------------------------------------------------------------
-# Lazy import to avoid circular import at collection time
-# ---------------------------------------------------------------------------
-from datetime import datetime, timezone  # noqa: E402

@@ -14,8 +14,11 @@ def dashboard_url():
         # Check if dashboard is up
         response = httpx.get(f"{url}/health", timeout=2.0)
         if response.status_code != 200:
-            pytest.skip(f"Dashboard returned status {response.status_code}. Integration tests skipped.")
-    except Exception:
+            pytest.skip(
+                f"Dashboard returned status {response.status_code}. "
+                "Integration tests skipped."
+            )
+    except (httpx.HTTPError, ConnectionError):
         pytest.skip(f"Dashboard service is not running at {url}. Integration tests skipped.")
     return url
 
@@ -24,7 +27,7 @@ def test_dashboard_health_endpoint(dashboard_url):
     """Verify that GET /health returns 200 OK and correct JSON structure."""
     response = httpx.get(f"{dashboard_url}/health")
     assert response.status_code == 200
-    
+
     data = response.json()
     assert data["status"] == "ok"
     assert "timestamp" in data
@@ -36,15 +39,15 @@ def test_dashboard_status_endpoint(dashboard_url):
     """Verify that GET /api/status returns 200 OK and detailed service stats."""
     response = httpx.get(f"{dashboard_url}/api/status")
     assert response.status_code == 200
-    
+
     data = response.json()
     assert "timestamp" in data
     assert "services" in data
-    
+
     services = data["services"]
     assert "zenoh" in services
     assert "iotdb" in services
-    
+
     assert "connected" in services["zenoh"]
     assert "connected" in services["iotdb"]
 
