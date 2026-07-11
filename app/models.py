@@ -3,8 +3,10 @@
 
 from pydantic import BaseModel, Field
 
+
 class SensorReading(BaseModel):
     """Pydantic model for sensor readings sent over Zenoh."""
+
     sensor_id: str = Field(..., description="Unique identifier for the sensor")
     device: str = Field(..., description="Device identifier (e.g., machine1)")
     measurement: str = Field(..., description="Measurement type (e.g., temperature)")

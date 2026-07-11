@@ -18,10 +18,7 @@ def iotdb_client():
     """Fixture to connect and close IoTDBClient for tests."""
     client = IoTDBClient()
     connected = client.connect(
-        host="localhost",
-        port=6667,
-        username=config.IOTDB_USER,
-        password=config.IOTDB_PASSWORD
+        host="localhost", port=6667, username=config.IOTDB_USER, password=config.IOTDB_PASSWORD
     )
     if not connected:
         pytest.skip("Apache IoTDB is not running at localhost:6667. Integration tests skipped.")

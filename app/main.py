@@ -151,7 +151,9 @@ async def api_status():
 
 try:
     import panel as pn  # noqa: E402
-    import panel.io.fastapi  # noqa: F401 – triggers bokeh-fastapi check early
+
+    # Side-effect import: triggers the bokeh-fastapi availability check early.
+    import panel.io.fastapi  # noqa: F401,E402  # pylint: disable=unused-import
 
     @pn.io.fastapi.add_application("/panel", app=app, title="IoT Stream Analysis Dashboard")
     def _dashboard_factory():

@@ -182,8 +182,31 @@ The tests cover:
 3. **IoTDB Connection**: Verifying schema creation, inserts, and queries.
 4. **Bridge Flow**: E2E check. Sending a message to Zenoh and asserting it is successfully bridged to IoTDB.
 5. **Dashboard Health**: Validating `/health` and `/api/status` API responses.
+6. **Dashboard ECharts rendering (unit)**: `tests/test_dashboard_echarts.py` verifies the `create_echarts_option` builder produces a valid ECharts option dict (axes, series, data wiring) and that the `pn.pane.ECharts` pane is constructed with the correct configuration.
+7. **Dashboard rendering (integration)**: `tests/test_dashboard_integration.py` boots the **exact** FastAPI+Panel app the container runs (`uvicorn app.main:app`) in-process and asserts `GET /panel` returns HTTP 200 with the ECharts library embedded **locally** (no external CDN).
+8. **Dashboard rendering (E2E, browser)**: `tests/test_dashboard_e2e.py` loads `/panel` in a headless Chromium (Playwright) and asserts the ECharts canvases mount and receive data. Skipped automatically when Playwright or a running server is unavailable.
 
 *Note: Integration tests (except configuration checks) require the Docker Compose stack to be running (`make up`). If the services are not running, integration tests will be skipped automatically.*
+
+### Running the dashboard/rendering tests specifically
+
+```bash
+# Unit + integration (no Docker, no browser required)
+python -m pytest tests/test_dashboard_echarts.py tests/test_dashboard_integration.py -v
+
+# End-to-end (requires a running dashboard + Playwright Chromium)
+pip install playwright && playwright install --with-deps chromium
+export DASHBOARD_URL=http://localhost:8080   # or DASHBOARD_PORT
+python -m pytest tests/test_dashboard_e2e.py -v
+```
+
+To run the **whole** suite:
+
+```bash
+make integration-test
+```
+
+
 
 ---
 
@@ -195,6 +218,8 @@ The tests cover:
 - **Empty Charts / No IoTDB Data**: Ensure the database bridge container is running to persist Zenoh data to IoTDB (`docker compose ps` and `docker compose logs -f zenoh-to-iotdb`).
 - **IoTDB Connection Refused**: Verify Apache IoTDB is fully up and listening on port `6667`. Check container status with `docker compose ps` and ensure no other process is bound to port `6667` on the host.
 - **Zenoh Subscriber Receives No Samples**: Ensure the publisher is connecting to the correct broker IP/port and is using the exact same key expression (without a leading slash, as Zenoh 1.x path expressions must not start with `/`).
+- **Dashboard page is blank / ECharts panes never appear**: The whole dashboard fails to render (HTTP 500 or blank page) if `app/dashboard.py` raises while building the view. The most common cause was a hard-coded absolute logo path (`/app/app/asf-estd-1999-logo.jpg`) combined with `pn.pane.JPG(..., embed=True)` — Panel fetches embedded images via `requests.get`, so a missing/scheme-less path raises `MissingSchema` and aborts `template.server_doc`. The path is now resolved relative to the package (`os.path.join(<pkg>/app/...)`) and guarded with `os.path.exists`. If you still see a blank page, check the container logs for `MissingSchema`/`server_doc` tracebacks and confirm the logo file ships at `/app/app/asf-estd-1999-logo.jpg` (Dockerfile copies `app/` to `/app/app/`).
+- **ECharts library fails to load (offline container)**: Modern Panel bundles the ECharts JS locally under `static/extensions/panel/bundled/echarts/`, so no internet is required at runtime. If you pin an older Panel (pre-1.4) that loads ECharts from a CDN, the charts will stay blank in an offline container — keep `panel>=1.3.0` resolved to a current release (≥1.4) or pin an explicit modern version.
 - **ECharts Pane Does Not Update**: Make sure you did not modify the chart data dictionary without triggering the change event. If updating values, always call `chart_pane.param.trigger('data')` to force a browser refresh.
 
 ---
