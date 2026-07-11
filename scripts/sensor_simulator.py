@@ -44,7 +44,7 @@ signal.signal(signal.SIGINT, handle_shutdown)
 signal.signal(signal.SIGTERM, handle_shutdown)
 
 
-def generate_reading(device: str, measurement: str, min_val: float, max_val: float) -> dict:
+def generate_reading(device: str, measurement: str, min_val: float, max_val: float, fixed_val: float = None) -> dict:
     """Generate a single random telemetry reading.
 
     Args:
@@ -52,11 +52,13 @@ def generate_reading(device: str, measurement: str, min_val: float, max_val: flo
         measurement: Measurement type string
         min_val: Minimum range value
         max_val: Maximum range value
+        fixed_val: When provided, every reading emits this exact value instead
+            of a random one (used by deterministic integration tests).
 
     Returns:
         Dictionary payload conforming to SensorReading schema.
     """
-    value = round(random.uniform(min_val, max_val), 2)
+    value = round(fixed_val, 2) if fixed_val is not None else round(random.uniform(min_val, max_val), 2)
     timestamp = datetime.now(timezone.utc).isoformat()
     return {
         "sensor_id": f"{device}-{measurement}",
@@ -120,6 +122,13 @@ def parse_args():
         action="store_true",
         help="Publish a single reading and exit immediately (useful for testing)"
     )
+    parser.add_argument(
+        "--value",
+        type=float,
+        default=None,
+        help="Emit a fixed value on every reading (instead of a random one). "
+             "Useful for deterministic integration tests."
+    )
     return parser.parse_args()
 
 
@@ -138,7 +147,7 @@ def main():
 
     if args.once:
         # Generate and publish single reading
-        reading = generate_reading(args.device, args.measurement, args.min, args.max)
+        reading = generate_reading(args.device, args.measurement, args.min, args.max, args.value)
         payload = json.dumps(reading)
         logger.info("Publishing single reading: %s", payload)
         success = client.publish(args.key, payload)
@@ -159,7 +168,7 @@ def main():
 
     try:
         while running:
-            reading = generate_reading(args.device, args.measurement, args.min, args.max)
+            reading = generate_reading(args.device, args.measurement, args.min, args.max, args.value)
             payload = json.dumps(reading)
             
             # Print friendly console log as requested by user ("except for CLI-friendly simulator status messages")

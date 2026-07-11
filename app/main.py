@@ -22,6 +22,7 @@ from app import config
 from app.dashboard import create_dashboard
 from app.iotdb_client import IoTDBClient
 from app.zenoh_client import ZenohClient
+from app import simulator_controller
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -134,7 +135,41 @@ async def api_status():
                 "device": config.IOTDB_DEVICE,
             },
         },
+        "simulator": simulator_controller.simulator_status(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Sensor simulator control endpoints
+#
+# The dashboard container is the natural home for the simulator: in Docker it
+# shares the network with the Zenoh broker, so it can publish directly. These
+# endpoints wrap ``app.simulator_controller`` which spawns the simulator as a
+# subprocess and captures its stdout into a rolling log.
+# ---------------------------------------------------------------------------
+
+@app.post("/api/simulator/start")
+async def api_simulator_start():
+    """Start the sensor simulator subprocess (idempotent)."""
+    return simulator_controller.start_simulator()
+
+
+@app.post("/api/simulator/stop")
+async def api_simulator_stop():
+    """Stop the sensor simulator subprocess (idempotent)."""
+    return simulator_controller.stop_simulator()
+
+
+@app.get("/api/simulator/status")
+async def api_simulator_status():
+    """Return whether the simulator is running and a detail message."""
+    return simulator_controller.simulator_status()
+
+
+@app.get("/api/simulator/log")
+async def api_simulator_log(tail: int = 200):
+    """Return the rolling log lines captured from the simulator subprocess."""
+    return simulator_controller.get_log(tail=tail)
 
 
 # ---------------------------------------------------------------------------

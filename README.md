@@ -83,6 +83,10 @@ Follow these simple steps to run the complete environment:
 | **FastAPI + Panel Dashboard** | [http://localhost:8080/panel](http://localhost:8080/panel) | Telemetry monitoring charts |
 | **Dashboard Health Check** | [http://localhost:8080/health](http://localhost:8080/health) | API Status Check |
 | **Dashboard Detailed Status** | [http://localhost:8080/api/status](http://localhost:8080/api/status) | Port and connection statistics |
+| **Simulator Control (start)** | `POST http://localhost:8080/api/simulator/start` | Launch the in-container sensor simulator |
+| **Simulator Control (stop)** | `POST http://localhost:8080/api/simulator/stop` | Stop the in-container sensor simulator |
+| **Simulator Status** | [http://localhost:8080/api/simulator/status](http://localhost:8080/api/simulator/status) | running / stopped |
+| **Simulator Live Log** | [http://localhost:8080/api/simulator/log](http://localhost:8080/api/simulator/log) | Rolling stdout of the simulator |
 | **Zenoh TCP Protocol** | `localhost:7447` | Used by simulator and external clients |
 | **Zenoh REST API** | [http://localhost:8000](http://localhost:8000) | Zenoh Admin REST access |
 | **Apache IoTDB Thrift RPC** | `localhost:6667` | Database connections |
@@ -140,9 +144,85 @@ The project includes a `Makefile` to simplify common operations:
 
 - `make up` - Start the containerized services (`zenoh`, `iotdb`, `bridge`, `dashboard`).
 - `make down` - Shut down and clean container instances, networks, and volumes.
-- `make simulator` - Launch the local sensor simulator loop.
+- `make simulator` - Launch the *local* sensor simulator loop (host process, great for dev without Docker).
 - `make integration-test` - Run all automated configurations and connectivity checks.
 - `make clean` - Clean up python temporary caches.
+
+---
+
+## In-Dashboard Sensor Simulator Control
+
+In addition to running the simulator as a local host process (`make simulator` /
+`python scripts/sensor_simulator.py`), the **dashboard container itself can
+start and stop the simulator** and show its live log. This keeps the whole
+pipeline — `Simulator -> Zenoh -> Bridge -> IoTDB -> Panel` — inside one
+Docker network so you never need a process on the host.
+
+### How it works
+
+- `app/simulator_controller.py` owns a single subprocess that runs
+  `scripts/sensor_simulator.py`. It captures the simulator's stdout into a
+  bounded, thread-safe rolling log and exposes `start_simulator()` /
+  `stop_simulator()` / `simulator_status()` / `get_log()`.
+- `app/main.py` exposes this as REST endpoints (all under `/api/simulator/`):
+  - `POST /api/simulator/start` — launch the simulator (idempotent).
+  - `POST /api/simulator/stop` — terminate it gracefully (idempotent).
+  - `GET  /api/simulator/status` — `running` / `stopped` + detail string.
+  - `GET  /api/simulator/log?tail=N` — the last `N` log lines.
+  - `GET  /api/status` now also reports `simulator` state.
+- `app/dashboard.py` renders a **"Sensor Simulator Control"** card (collapsible)
+  with **▶ Start** / **■ Stop** buttons and a live, auto-refreshing
+  **Log** panel. The same controller is shared with the REST API, so a start
+  issued from the API is reflected in the dashboard and vice-versa.
+
+### Using it in the UI
+
+1. Bring up the stack: `make up`.
+2. Open <http://localhost:8080/panel>.
+3. Scroll to the **Sensor Simulator Control** card.
+4. Click **▶ Start Simulator** — the badge flips to 🟢 Running and the log
+   panel begins streaming each published reading (e.g.
+   `[2026-...] Simulated machine1.temperature = 23.41 celsius`).
+5. Watch **Live Zenoh Stream** (Diagram 1) and **Live IoTDB Time Series**
+   (Diagram 2) populate as the bridge persists the data.
+6. Click **■ Stop Simulator** to halt publishing.
+
+> Note: when you run `make simulator` on the host instead, the dashboard's
+> **Start/Stop** buttons won't control that external process — they manage the
+> dashboard container's own simulator subprocess. Both publish to the same key
+> expression, so either path feeds the charts.
+
+### Local (host) simulator
+
+The standalone script gained a `--value` flag for deterministic runs:
+
+```bash
+python scripts/sensor_simulator.py --once --value 24.5      # single fixed reading
+python scripts/sensor_simulator.py --interval 0.5 --min 10 --max 40
+python scripts/sensor_simulator.py --endpoint tcp/localhost:7447
+```
+
+---
+
+## Architecture Diagram (with in-container simulator control)
+
+```mermaid
+flowchart LR
+    subgraph DashboardContainer[FastAPI + Panel Dashboard Container]
+        UI[Panel UI: Start/Stop buttons + live log]
+        API[REST /api/simulator/*]
+        Sim[Sensor Simulator subprocess scripts/sensor_simulator.py]
+        UI -->|control| API
+        API -->|spawn/terminate| Sim
+        Sim -->|stdout -> rolling log| UI
+    end
+    Sim -->|Zenoh publish tcp/zenoh:7447| Zenoh[Zenoh Broker Container]
+    Zenoh -->|subscribe| Bridge[Zenoh-to-IoTDB Bridge Container]
+    Bridge -->|insert timeseries| IoTDB[Apache IoTDB Container]
+    DashboardContainer -->|subscribe live data| Zenoh
+    DashboardContainer -->|query historical data| IoTDB
+    User[Browser] -->|http://localhost:8080/panel| UI
+```
 
 ---
 
@@ -185,8 +265,19 @@ The tests cover:
 6. **Dashboard ECharts rendering (unit)**: `tests/test_dashboard_echarts.py` verifies the `create_echarts_option` builder produces a valid ECharts option dict (axes, series, data wiring) and that the `pn.pane.ECharts` pane is constructed with the correct configuration.
 7. **Dashboard rendering (integration)**: `tests/test_dashboard_integration.py` boots the **exact** FastAPI+Panel app the container runs (`uvicorn app.main:app`) in-process and asserts `GET /panel` returns HTTP 200 with the ECharts library embedded **locally** (no external CDN).
 8. **Dashboard rendering (E2E, browser)**: `tests/test_dashboard_e2e.py` loads `/panel` in a headless Chromium (Playwright) and asserts the ECharts canvases mount and receive data. Skipped automatically when Playwright or a running server is unavailable.
+9. **Sensor simulator flow**: `tests/test_sensor_flow.py` covers two layers: (a) API/controller contract tests (`test_simulator_api_*`) that start/stop the simulator subprocess and verify the rolling log — these run **without Docker**; (b) `test_sensor_full_pipeline`, a Docker-gated end-to-end check that starts the simulator, confirms the value arrives on Zenoh (Diagram 1 source) and is persisted to IoTDB by the bridge (Diagram 2 source), then stops it. Skipped automatically when the stack is down.
 
 *Note: Integration tests (except configuration checks) require the Docker Compose stack to be running (`make up`). If the services are not running, integration tests will be skipped automatically.*
+
+### Running the simulator-flow tests specifically
+
+```bash
+# API + controller contract (no Docker required)
+python -m pytest tests/test_sensor_flow.py -k api -v
+
+# Full pipeline (requires `make up`)
+python -m pytest tests/test_sensor_flow.py -k full_pipeline -v
+```
 
 ### Running the dashboard/rendering tests specifically
 

@@ -3,6 +3,7 @@
 
 import collections
 import functools
+import html
 import json
 import logging
 import os
@@ -12,6 +13,7 @@ from typing import Any, Dict, List, Tuple
 import panel as pn
 
 from app import config
+from app import simulator_controller
 from app.zenoh_client import ZenohClient, decode_payload
 from app.iotdb_client import IoTDBClient
 
@@ -292,6 +294,42 @@ def _refresh_iotdb_ui(
         )
 
 
+def _refresh_simulator_ui(
+    simulator_status_pane: Any,
+    simulator_log_pane: Any,
+) -> None:
+    """Refresh the simulator status + log panel from the controller.
+
+    Reads the rolling log buffer and current running state via
+    ``app.simulator_controller`` (the same in-process controller the FastAPI
+    routes use) and re-renders the Markdown panes. Called on a periodic
+    callback so the dashboard mirrors the subprocess's live output.
+    """
+    info = simulator_controller.get_log(tail=200)
+    running = bool(info.get("running"))
+
+    badge = "🟢 Running" if running else "🔴 Stopped"
+    detail = html.escape(str(info.get("detail", "")))
+    status_md = (
+        "### Sensor Simulator\n"
+        f"{badge}\n"
+        f"* **State**: `{html.escape(str(info.get('status', 'stopped')))}`\n"
+        f"* **Detail**: {detail}\n"
+    )
+    simulator_status_pane.object = status_md
+
+    lines = info.get("lines", [])
+    if lines:
+        log_md = "```text\n" + "\n".join(lines[-200:]) + "\n```"
+    else:
+        log_md = (
+            "```text\n"
+            "(no output yet – press ▶ Start Simulator to begin publishing)\n"
+            "```"
+        )
+    simulator_log_pane.object = log_md
+
+
 # ---------------------------------------------------------------------------
 # Dashboard factory
 # ---------------------------------------------------------------------------
@@ -390,6 +428,63 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn
 * **IoTDB Device**: `{config.IOTDB_DEVICE}`
 """).servable(area="sidebar")
 
+    # ---------------------------------------------------------------------------
+    # Sensor Simulator control section
+    #
+    # The dashboard container runs the simulator as an in-process-controlled
+    # subprocess (see app.simulator_controller). These buttons + the log panel
+    # give the operator start/stop control and a live, scrollable view of the
+    # simulator's stdout (status, published readings, any errors).
+    # ---------------------------------------------------------------------------
+    simulator_status_pane = pn.pane.Markdown("### Sensor Simulator\n🔴 Stopped")
+    simulator_log_pane = pn.pane.Markdown(
+        "```text\n(no output yet – press ▶ Start Simulator to begin publishing)\n```"
+    )
+
+    def _start_cb(event: Any) -> None:
+        """Panel button callback: start the simulator via the controller."""
+        simulator_controller.start_simulator()
+        _refresh_simulator_ui(simulator_status_pane, simulator_log_pane)
+
+    def _stop_cb(event: Any) -> None:
+        """Panel button callback: stop the simulator via the controller."""
+        simulator_controller.stop_simulator()
+        _refresh_simulator_ui(simulator_status_pane, simulator_log_pane)
+
+    start_btn = pn.widgets.Button(
+        name="▶ Start Simulator", button_type="success", width=160
+    )
+    stop_btn = pn.widgets.Button(
+        name="■ Stop Simulator", button_type="danger", width=160
+    )
+    start_btn.on_click(_start_cb)
+    stop_btn.on_click(_stop_cb)
+
+    simulator_card = pn.Card(
+        pn.Column(
+            pn.Row(start_btn, stop_btn, sizing_mode="stretch_width"),
+            simulator_status_pane,
+            pn.layout.Divider(),
+            pn.pane.Markdown("**Live Simulator Log**"),
+            simulator_log_pane,
+            sizing_mode="stretch_width",
+        ),
+        title="Sensor Simulator Control",
+        margin=5,
+        sizing_mode="stretch_width",
+        collapsible=True,
+    )
+
+    # Keep the simulator panel in sync even when the user hasn't clicked.
+    pn.state.add_periodic_callback(
+        functools.partial(
+            _refresh_simulator_ui,
+            simulator_status_pane,
+            simulator_log_pane,
+        ),
+        2000,
+    )
+
     # Main dashboard assembly
     description = pn.pane.Markdown(
         "This interactive dashboard visualizes telemetry data streams from two "
@@ -433,5 +528,6 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn
         description,
         status_row,
         chart_row,
+        simulator_card,
         sizing_mode="stretch_width",
     )

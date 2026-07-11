@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code and files
 COPY app/ ./app/
+COPY scripts/ ./scripts/
 
 # Assign ownership to the non-root user
 RUN chown -R appuser:appuser /app
