@@ -4,6 +4,7 @@
 import collections
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -254,8 +255,16 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn
     pn.state.add_periodic_callback(refresh_iotdb_ui, 2000)
 
     # Sidebar elements
-    logo_path = "/app/app/asf-estd-1999-logo.jpg"
-    pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True).servable(area="sidebar")
+    # NOTE: The logo path must be resolved relative to the package, never a
+    # hard-coded absolute path (e.g. "/app/app/asf-estd-1999-logo.jpg").
+    # pn.pane.JPG(..., embed=True) fetches the source through `requests.get`,
+    # so a bare/non-existent absolute path raises requests.exceptions.MissingSchema.
+    # That exception propagates up through template.server_doc and aborts the
+    # *entire* dashboard render -- the ECharts panes never appear.
+    # We therefore resolve the file robustly and only embed it when it exists.
+    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app", "asf-estd-1999-logo.jpg")
+    if os.path.exists(logo_path):
+        pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True).servable(area="sidebar")
     pn.pane.Markdown(
         f"""# System Settings
 * **Zenoh Key**: `{config.ZENOH_KEY_EXPRESSION}`
