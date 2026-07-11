@@ -75,6 +75,7 @@ _stop_event = threading.Event()
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _append_log(line: str) -> None:
     """Append a decoded log line to the rolling buffer (lock-free; caller locks)."""
     # Drop a trailing newline so the UI can render its own line breaks.
@@ -161,6 +162,7 @@ def _check_alive() -> bool:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def start_simulator(
     value: Optional[float] = None,
     interval: Optional[float] = None,
@@ -215,12 +217,9 @@ def start_simulator(
             _process = proc
             _state = "running"
             _state_detail = (
-                f"Publishing to Zenoh {config.ZENOH_ENDPOINT} on "
-                f"{config.ZENOH_KEY_EXPRESSION}."
+                f"Publishing to Zenoh {config.ZENOH_ENDPOINT} on " f"{config.ZENOH_KEY_EXPRESSION}."
             )
-            _reader_thread = threading.Thread(
-                target=_reader_loop, args=(proc,), daemon=True
-            )
+            _reader_thread = threading.Thread(target=_reader_loop, args=(proc,), daemon=True)
             _reader_thread.start()
             logger.info("Sensor simulator started (pid=%s).", proc.pid)
             return {

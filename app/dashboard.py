@@ -328,18 +328,16 @@ def _refresh_simulator_ui(
     if lines:
         log_md = "```text\n" + "\n".join(lines[-200:]) + "\n```"
     else:
-        log_md = (
-            "```text\n"
-            "(no output yet – press ▶ Start Simulator to begin publishing)\n"
-            "```"
-        )
+        log_md = "```text\n" "(no output yet – press ▶ Start Simulator to begin publishing)\n" "```"
     simulator_log_pane.object = log_md
 
 
 # ---------------------------------------------------------------------------
 # Dashboard factory
 # ---------------------------------------------------------------------------
-def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> "pn.viewable.Viewable":
+def create_dashboard(
+    zenoh_client: ZenohClient, iotdb_client: IoTDBClient
+) -> "pn.viewable.Viewable":
     """Create the Panel dashboard layout.
 
     Called once per browser session by the Panel/FastAPI integration.
@@ -427,19 +425,13 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> "p
     )
     sidebar_items: List[Any] = []
     if os.path.exists(logo_path):
-        sidebar_items.append(
-            pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True)
-        )
-    sidebar_items.append(
-        pn.pane.Markdown(
-            f"""# System Settings
+        sidebar_items.append(pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True))
+    sidebar_items.append(pn.pane.Markdown(f"""# System Settings
 * **Zenoh Key**: `{config.ZENOH_KEY_EXPRESSION}`
 * **Zenoh Endpoint**: `{config.ZENOH_ENDPOINT}`
 * **IoTDB Host**: `{config.IOTDB_HOST}:{config.IOTDB_PORT}`
 * **IoTDB Device**: `{config.IOTDB_DEVICE}`
-"""
-        )
-    )
+"""))
 
     # ---------------------------------------------------------------------------
     # Sensor Simulator control section
@@ -464,12 +456,8 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> "p
         simulator_controller.stop_simulator()
         _refresh_simulator_ui(simulator_status_pane, simulator_log_pane)
 
-    start_btn = pn.widgets.Button(
-        name="▶ Start Simulator", button_type="success", width=160
-    )
-    stop_btn = pn.widgets.Button(
-        name="■ Stop Simulator", button_type="danger", width=160
-    )
+    start_btn = pn.widgets.Button(name="▶ Start Simulator", button_type="success", width=160)
+    stop_btn = pn.widgets.Button(name="■ Stop Simulator", button_type="danger", width=160)
     start_btn.on_click(_start_cb)
     stop_btn.on_click(_stop_cb)
 

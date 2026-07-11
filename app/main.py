@@ -148,6 +148,7 @@ async def api_status():
 # subprocess and captures its stdout into a rolling log.
 # ---------------------------------------------------------------------------
 
+
 @app.post("/api/simulator/start")
 async def api_simulator_start():
     """Start the sensor simulator subprocess (idempotent)."""

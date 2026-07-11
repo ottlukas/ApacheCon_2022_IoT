@@ -185,12 +185,12 @@ def test_simulator_start_stop_buttons_present(page):
     result = page.evaluate(_SHADOW_PIERCING_JS)
     labels = result["buttons"]
     joined = " | ".join(labels)
-    assert any("Start Simulator" in b for b in labels), (
-        f"Start Simulator button missing. Buttons found: {joined}"
-    )
-    assert any("Stop Simulator" in b for b in labels), (
-        f"Stop Simulator button missing. Buttons found: {joined}"
-    )
+    assert any(
+        "Start Simulator" in b for b in labels
+    ), f"Start Simulator button missing. Buttons found: {joined}"
+    assert any(
+        "Stop Simulator" in b for b in labels
+    ), f"Stop Simulator button missing. Buttons found: {joined}"
 
 
 def test_charts_populate_with_live_data(page):
@@ -244,6 +244,6 @@ def test_charts_populate_with_live_data(page):
             "No telemetry flowing (Zenoh/IoTDB not producing); "
             "cannot assert live data in this environment."
         )
-    assert any(s["points"] > 0 for s in populated), (
-        f"ECharts series never received data: {populated}"
-    )
+    assert any(
+        s["points"] > 0 for s in populated
+    ), f"ECharts series never received data: {populated}"

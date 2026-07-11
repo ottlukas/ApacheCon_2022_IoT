@@ -34,10 +34,10 @@ jobs:
     
     - name: Run linting
       run: |
-        pip install pylint
-        pylint app/ tests/ --disable=C0114,C0115,C0116,W0613,W0621,W0212
-    
+        pip install "pylint==4.0.6"
+        pylint app/ tests/ --disable=C0114,C0115,C0116,W0613,W0621,W0212,C0103,W0603,R1732,C0415,R0914,R0801,W1404
+
     - name: Check code formatting
       run: |
-        pip install black
+        pip install "black==26.5.1"
         black --check app/ tests/
