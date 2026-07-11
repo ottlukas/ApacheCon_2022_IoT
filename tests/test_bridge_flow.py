@@ -95,4 +95,3 @@ def test_bridge_flow(bridge_flow_services):
         f"{BRIDGE_WAIT_SECONDS}s. Check bridge container logs: "
         "'docker compose logs -f zenoh-to-iotdb'"
     )
-

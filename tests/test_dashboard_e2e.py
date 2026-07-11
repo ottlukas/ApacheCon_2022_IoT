@@ -24,6 +24,7 @@ skipped automatically (it never fabricates a pass).
 
 import os
 
+import httpx
 import pytest
 
 try:
@@ -48,11 +49,9 @@ pytestmark = pytest.mark.skipif(
 
 def _server_reachable() -> bool:
     try:
-        import httpx
-
         resp = httpx.get(f"{DASHBOARD_URL}/health", timeout=2.0)
         return resp.status_code == 200
-    except Exception:  # pragma: no cover - network dependent
+    except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover - network dependent
         return False
 
 
@@ -65,8 +64,11 @@ def browser():
             browser = p.chromium.launch(headless=True)
             yield browser
             browser.close()
-    except Exception as exc:  # pragma: no cover - browser not installed
-        pytest.skip(f"Could not launch Chromium (install with 'playwright install chromium'): {exc}")
+    except Exception as exc:  # pylint: disable=broad-exception-caught  # pragma: no cover - browser not installed
+        pytest.skip(
+            "Could not launch Chromium (install with 'playwright install "
+            f"chromium'): {exc}"
+        )
 
 
 @pytest.fixture(scope="module")

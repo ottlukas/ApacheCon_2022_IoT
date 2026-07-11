@@ -7,26 +7,28 @@ configuration *without* needing a running browser or a live Panel server.
 The ECharts rendering itself is covered by the integration and E2E suites.
 """
 
-import importlib
+import os
+from types import SimpleNamespace
 
+import panel as pn
 import pytest
 
+try:
+    from app import dashboard
+except ImportError as exc:  # pragma: no cover - depends on env
+    dashboard = None
+    _IMPORT_EXC = exc
+else:
+    _IMPORT_EXC = None
 
-# ---------------------------------------------------------------------------
-# Helpers around the module-import guard
-# ---------------------------------------------------------------------------
-def _load_dashboard_module():
-    """Import app.dashboard, skipping gracefully if its heavy deps are absent.
+pytestmark = pytest.mark.skipif(
+    dashboard is None, reason=f"Dashboard dependencies unavailable: {_IMPORT_EXC}"
+)
 
-    Returns the module, or ``None`` when Panel / the dashboard module cannot
-    be imported (e.g. in a minimal CI environment without the UI deps).
-    """
-    try:
-        import app.dashboard as dashboard  # noqa: WPS433 (late import on purpose)
-        return dashboard
-    except ImportError as exc:  # pragma: no cover - depends on env
-        pytest.skip(f"Dashboard dependencies unavailable: {exc}")
-        return None
+
+def _make_fake_echarts(obj, **kwargs):
+    """Stand-in for ``pn.pane.ECharts`` that records the option it received."""
+    return SimpleNamespace(object=obj, kwargs=kwargs, data=obj)
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +36,6 @@ def _load_dashboard_module():
 # ---------------------------------------------------------------------------
 def test_create_echarts_option_structure():
     """The option dict must contain the axes and series ECharts expects."""
-    dashboard = _load_dashboard_module()
     option = dashboard.create_echarts_option(
         title="Live Zenoh Stream",
         x_data=["10:00:00", "10:00:01"],
@@ -61,7 +62,6 @@ def test_create_echarts_option_structure():
 
 def test_create_echarts_option_empty_data():
     """An empty initial chart must still be a valid ECharts option."""
-    dashboard = _load_dashboard_module()
     option = dashboard.create_echarts_option(
         title="Empty", x_data=[], y_data=[], series_name="T", color="#2196f3"
     )
@@ -79,21 +79,12 @@ def test_echarts_pane_created_with_correct_data(monkeypatch):
     required, then assert it was called with the expected option and that the
     resulting object carries the right series data.
     """
-    dashboard = _load_dashboard_module()
-
-    class _FakeECharts:
-        def __init__(self, object, **kwargs):
-            self.object = object
-            self.kwargs = kwargs
-            self.data = object  # mirrors how Panel stores the option
-
-        def param_trigger(self, _name):  # noqa: D401 (test helper)
-            pass
-
-    import panel as pn
-
     captured = {}
-    monkeypatch.setattr(pn.pane, "ECharts", lambda object, **kw: captured.setdefault("pane", _FakeECharts(object, **kw)))
+    monkeypatch.setattr(
+        pn.pane,
+        "ECharts",
+        lambda obj, **kw: captured.setdefault("pane", _make_fake_echarts(obj, **kw)),
+    )
 
     # The real clients do not open connections in their constructors, so we
     # can instantiate them directly without any network side effects.
@@ -118,16 +109,14 @@ def test_logo_path_is_resolved_relative_to_package():
     ``MissingSchema`` and aborting the entire dashboard render (so the
     ECharts panes never appeared).
     """
-    import os
-
-    dashboard = _load_dashboard_module()
     # Re-execute the same resolution logic the dashboard uses, but without
-    # touching Panel. We simply assert the strategy yields an existing file
-    # in this repo (and would gracefully no-op in a broken container).
+    # touching Panel. The strategy must yield a path that exists in this repo
+    # and would gracefully no-op (skip the image) in a broken container.
     logo_path = os.path.join(
-        os.path.dirname(os.path.dirname(dashboard.__file__)), "app", "asf-estd-1999-logo.jpg"
+        os.path.dirname(os.path.dirname(dashboard.__file__)),
+        "app",
+        "asf-estd-1999-logo.jpg",
     )
-    # In this repository the logo exists; the assertion documents the intent.
     if os.path.exists(logo_path):
         assert logo_path.endswith("app/asf-estd-1999-logo.jpg")
     else:
@@ -138,9 +127,5 @@ def test_logo_path_is_resolved_relative_to_package():
 
 def test_dashboard_import_loads_echarts_extension():
     """Importing the dashboard module must enable the ECharts Panel extension."""
-    dashboard = _load_dashboard_module()
-    # pn.extension("echarts") registers the extension at import time.
-    import panel as pn
-
     # The echarts pane must be importable/usable after the module loads.
     assert hasattr(pn.pane, "ECharts")

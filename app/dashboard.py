@@ -262,7 +262,9 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn
     # That exception propagates up through template.server_doc and aborts the
     # *entire* dashboard render -- the ECharts panes never appear.
     # We therefore resolve the file robustly and only embed it when it exists.
-    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app", "asf-estd-1999-logo.jpg")
+    logo_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "app", "asf-estd-1999-logo.jpg"
+    )
     if os.path.exists(logo_path):
         pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True).servable(area="sidebar")
     pn.pane.Markdown(

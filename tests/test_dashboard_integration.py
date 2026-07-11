@@ -25,6 +25,7 @@ import pytest
 # the bokeh-fastapi availability check. If those UI deps are missing we skip.
 try:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import panel as pn  # noqa: E402  (UI dep; needed to neutralise periodic callbacks)
     from fastapi.testclient import TestClient
     from app import main as dashboard_app  # noqa: E402
 
@@ -48,10 +49,8 @@ def client(monkeypatch):
     short-lived portal whose event loop is closed after each request, which
     makes Bokeh's ``add_periodic_callback`` raise ``Event loop is closed``.
     Those callbacks are exercised elsewhere (live container) and are not what
-    these rendering tests assert, so we neutralise them here.
+    those rendering tests assert, so we neutralise them here.
     """
-    import panel as pn
-
     monkeypatch.setattr(pn.state, "add_periodic_callback", lambda *a, **k: None)
     with TestClient(APP) as c:
         yield c
