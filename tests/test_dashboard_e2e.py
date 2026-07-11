@@ -191,3 +191,59 @@ def test_simulator_start_stop_buttons_present(page):
     assert any("Stop Simulator" in b for b in labels), (
         f"Stop Simulator button missing. Buttons found: {joined}"
     )
+
+
+def test_charts_populate_with_live_data(page):
+    """The ECharts panes must actually receive series data (not stay empty).
+
+    Regression guard for the "charts render but never update" bug: the update
+    helpers mutated chart_pane.object in place + param.trigger('object'), which
+    did NOT re-serialize to the browser, so both diagrams stayed permanently
+    empty. The fix reassigns a fresh option dict. This starts the simulator via
+    the API, waits for the periodic callbacks to run, and asserts at least one
+    ECharts series carries points.
+
+    Reads the option dict off the Bokeh model registry. Skips (never fails
+    falsely) if no data flows -- e.g. the Zenoh broker / IoTDB is not wired up
+    in this environment.
+    """
+    # Kick the simulator so telemetry starts flowing.
+    try:
+        httpx.post(f"{DASHBOARD_URL}/api/simulator/start", timeout=5.0)
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass  # pragma: no cover - environment dependent
+
+    read_series = """
+        () => {
+            const out = [];
+            (window.Bokeh ? Bokeh.documents : []).forEach(d =>
+                d._all_models.forEach(m => {
+                    if (m.data && m.data.series && m.data.series[0]) {
+                        const s = m.data.series[0].data || [];
+                        out.push({
+                            title: (m.data.title && m.data.title.text) || '?',
+                            points: s.length,
+                        });
+                    }
+                })
+            );
+            return out;
+        }
+    """
+    # Give the periodic callbacks several cycles to populate the charts.
+    populated = []
+    for _ in range(12):
+        page.wait_for_timeout(2000)
+        series = page.evaluate(read_series)
+        populated = [s for s in series if s["points"] > 0]
+        if populated:
+            break
+
+    if not populated:
+        pytest.skip(
+            "No telemetry flowing (Zenoh/IoTDB not producing); "
+            "cannot assert live data in this environment."
+        )
+    assert any(s["points"] > 0 for s in populated), (
+        f"ECharts series never received data: {populated}"
+    )

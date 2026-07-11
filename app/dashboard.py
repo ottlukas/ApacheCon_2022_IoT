@@ -162,10 +162,14 @@ def _update_zenoh_chart(points: "collections.deque", chart_pane: Any) -> None:
         return
     times = [pt[0] for pt in points]
     values = [pt[1] for pt in points]
-    # ECharts panes expose the option dict via `object` (not `data`).
-    chart_pane.object["xAxis"]["data"] = times
-    chart_pane.object["series"][0]["data"] = values
-    chart_pane.param.trigger("object")
+    # Reassign a FRESH option dict (do NOT mutate chart_pane.object in place).
+    # In-place mutation of nested keys followed by param.trigger("object") does
+    # not reliably re-serialize to the browser because the object identity is
+    # unchanged, so ECharts never redraws -> permanently empty chart. Building a
+    # new dict and assigning it guarantees the sync callback fires.
+    chart_pane.object = create_echarts_option(
+        "Live Zenoh Stream", times, values, "Temperature", "#ff9800"
+    )
 
 
 def _update_iotdb_chart(records: List[Dict[str, Any]], chart_pane: Any) -> None:
@@ -174,9 +178,11 @@ def _update_iotdb_chart(records: List[Dict[str, Any]], chart_pane: Any) -> None:
         return
     times = [_format_iotdb_timestamp(pt.get("timestamp", "")) for pt in records]
     values = [float(pt.get("temperature", 0.0)) for pt in records]
-    chart_pane.object["xAxis"]["data"] = times
-    chart_pane.object["series"][0]["data"] = values
-    chart_pane.param.trigger("object")
+    # Reassign a fresh option dict (see _update_zenoh_chart for why in-place
+    # mutation + param.trigger does not propagate to the browser).
+    chart_pane.object = create_echarts_option(
+        "Live IoTDB Time Series", times, values, "Temperature", "#2196f3"
+    )
 
 
 # ---------------------------------------------------------------------------
