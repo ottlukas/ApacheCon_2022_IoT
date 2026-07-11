@@ -49,7 +49,9 @@ def _server_reachable() -> bool:
     try:
         resp = httpx.get(f"{DASHBOARD_URL}/health", timeout=2.0)
         return resp.status_code == 200
-    except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover - network dependent
+    except (
+        Exception
+    ):  # pylint: disable=broad-exception-caught  # pragma: no cover - network dependent
         return False
 
 
@@ -62,11 +64,13 @@ def browser():
             browser = p.chromium.launch(headless=True)
             yield browser
             browser.close()
-    except Exception as exc:  # pylint: disable=broad-exception-caught  # pragma: no cover - browser not installed
+    except (
+        Exception
+    ) as exc:  # pylint: disable=broad-exception-caught  # pragma: no cover - browser not installed
         pytest.skip(
-            "Could not launch Chromium (install with 'playwright install "
-            f"chromium'): {exc}"
+            "Could not launch Chromium (install with 'playwright install " f"chromium'): {exc}"
         )
+
 
 @pytest.fixture(scope="module")
 def page(browser):
