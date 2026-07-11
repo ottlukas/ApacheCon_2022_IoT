@@ -15,15 +15,18 @@ from app import config
 # Try to import IoTDB Session with version compatibility
 try:
     from iotdb.Session import Session
+
     IOTDB_AVAILABLE = True
 except ImportError:
     try:
         from iotdb import Session
+
         IOTDB_AVAILABLE = True
     except ImportError as exc:
         logging.warning("IoTDB library not available: %s", exc)
         IOTDB_AVAILABLE = False
         Session = None  # type: ignore[assignment]
+
 
 # Specific IoTDB exceptions. We define narrow placeholder subclasses first so
 # the code remains valid (and Pylint sees specific, non-broad catches) even on
@@ -115,9 +118,7 @@ class IoTDBClient:
             )
             self._session.open(False)  # False = do not fetch metadata
             self._connected = True
-            logger.info(
-                "Connected to IoTDB at %s:%s", self._conn.host, self._conn.port
-            )
+            logger.info("Connected to IoTDB at %s:%s", self._conn.host, self._conn.port)
             return True
         except (IoTDBConnectionException, OSError) as exc:
             logger.error("Error connecting to IoTDB: %s", exc)
@@ -169,8 +170,7 @@ class IoTDBClient:
             full_ts_path = f"{self._device}.{self._measurement}"
             try:
                 create_ts_sql = (
-                    f"CREATE TIMESERIES {full_ts_path} "
-                    f"WITH DATATYPE=DOUBLE, ENCODING=PLAIN"
+                    f"CREATE TIMESERIES {full_ts_path} " f"WITH DATATYPE=DOUBLE, ENCODING=PLAIN"
                 )
                 self._session.execute_non_query_statement(create_ts_sql)
                 logger.debug("Timeseries %s created", full_ts_path)

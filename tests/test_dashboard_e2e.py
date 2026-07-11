@@ -42,16 +42,16 @@ DASHBOARD_URL = os.getenv(
 REQUIRE_SERVER = os.getenv("DASHBOARD_E2E_REQUIRE", "0") == "1"
 
 
-pytestmark = pytest.mark.skipif(
-    not _PLAYWRIGHT_AVAILABLE, reason="playwright not installed"
-)
+pytestmark = pytest.mark.skipif(not _PLAYWRIGHT_AVAILABLE, reason="playwright not installed")
 
 
 def _server_reachable() -> bool:
     try:
         resp = httpx.get(f"{DASHBOARD_URL}/health", timeout=2.0)
         return resp.status_code == 200
-    except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover - network dependent
+    except (
+        Exception
+    ):  # pylint: disable=broad-exception-caught  # pragma: no cover - network dependent
         return False
 
 
@@ -64,10 +64,11 @@ def browser():
             browser = p.chromium.launch(headless=True)
             yield browser
             browser.close()
-    except Exception as exc:  # pylint: disable=broad-exception-caught  # pragma: no cover - browser not installed
+    except (
+        Exception
+    ) as exc:  # pylint: disable=broad-exception-caught  # pragma: no cover - browser not installed
         pytest.skip(
-            "Could not launch Chromium (install with 'playwright install "
-            f"chromium'): {exc}"
+            "Could not launch Chromium (install with 'playwright install " f"chromium'): {exc}"
         )
 
 
@@ -109,12 +110,10 @@ def test_charts_receive_data(page):
     """
     # Give the periodic callbacks time to populate the charts.
     page.wait_for_timeout(5000)
-    result = page.evaluate(
-        """
+    result = page.evaluate("""
         () => {
             const canvases = document.querySelectorAll('.bk-ECharts canvas');
             return canvases.length;
         }
-        """
-    )
+        """)
     assert result >= 1

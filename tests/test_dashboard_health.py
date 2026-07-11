@@ -15,8 +15,7 @@ def dashboard_url():
         response = httpx.get(f"{url}/health", timeout=2.0)
         if response.status_code != 200:
             pytest.skip(
-                f"Dashboard returned status {response.status_code}. "
-                "Integration tests skipped."
+                f"Dashboard returned status {response.status_code}. " "Integration tests skipped."
             )
     except (httpx.HTTPError, ConnectionError):
         pytest.skip(f"Dashboard service is not running at {url}. Integration tests skipped.")

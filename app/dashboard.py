@@ -31,6 +31,7 @@ pn.state.template.param.update(
     font="Montserrat",
 )
 
+
 # ---------------------------------------------------------------------------
 # ECharts helper
 # ---------------------------------------------------------------------------
@@ -230,15 +231,9 @@ def _refresh_zenoh_ui(
         return
 
     if not state["subscribed"]:
-        _establish_subscription(
-            zenoh_client, state, state["on_zenoh_message"]
-        )
+        _establish_subscription(zenoh_client, state, state["on_zenoh_message"])
 
-    val_str = (
-        f"{state['last_zenoh_val']} °C"
-        if state["last_zenoh_val"] is not None
-        else "N/A"
-    )
+    val_str = f"{state['last_zenoh_val']} °C" if state["last_zenoh_val"] is not None else "N/A"
     zenoh_status_pane.object = (
         "### Zenoh Status\n🟢 Connected\n"
         f"* **Last Message**: {val_str}\n"
@@ -300,9 +295,7 @@ def _refresh_iotdb_ui(
 # ---------------------------------------------------------------------------
 # Dashboard factory
 # ---------------------------------------------------------------------------
-def create_dashboard(
-    zenoh_client: ZenohClient, iotdb_client: IoTDBClient
-) -> pn.layout.Column:
+def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn.layout.Column:
     """Create the Panel dashboard layout.
 
     Called once per browser session by the Panel/FastAPI integration.
@@ -331,9 +324,7 @@ def create_dashboard(
         sizing_mode="stretch_width",
     )
     iotdb_chart_pane = pn.pane.ECharts(
-        create_echarts_option(
-            "Live IoTDB Time Series", [], [], "Temperature", "#2196f3"
-        ),
+        create_echarts_option("Live IoTDB Time Series", [], [], "Temperature", "#2196f3"),
         height=400,
         sizing_mode="stretch_width",
     )
@@ -391,17 +382,13 @@ def create_dashboard(
         os.path.dirname(os.path.dirname(__file__)), "app", "asf-estd-1999-logo.jpg"
     )
     if os.path.exists(logo_path):
-        pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True).servable(
-            area="sidebar"
-        )
-    pn.pane.Markdown(
-        f"""# System Settings
+        pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True).servable(area="sidebar")
+    pn.pane.Markdown(f"""# System Settings
 * **Zenoh Key**: `{config.ZENOH_KEY_EXPRESSION}`
 * **Zenoh Endpoint**: `{config.ZENOH_ENDPOINT}`
 * **IoTDB Host**: `{config.IOTDB_HOST}:{config.IOTDB_PORT}`
 * **IoTDB Device**: `{config.IOTDB_DEVICE}`
-"""
-    ).servable(area="sidebar")
+""").servable(area="sidebar")
 
     # Main dashboard assembly
     description = pn.pane.Markdown(

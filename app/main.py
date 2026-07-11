@@ -151,6 +151,7 @@ async def api_status():
 
 try:
     import panel as pn  # noqa: E402
+
     # Side-effect import: triggers the bokeh-fastapi availability check early.
     import panel.io.fastapi  # noqa: F401,E402  # pylint: disable=unused-import
 
