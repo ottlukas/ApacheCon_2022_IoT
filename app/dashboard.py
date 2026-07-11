@@ -22,16 +22,16 @@ logger = logging.getLogger("dashboard")
 # ---------------------------------------------------------------------------
 # Panel global configuration (called once per process)
 # ---------------------------------------------------------------------------
-pn.extension("echarts", sizing_mode="stretch_width", template="fast", theme="dark")
+# NOTE: Do NOT pass template="fast" here. The implicit global template
+# (pn.state.template + .servable(area="sidebar")) is only valid under
+# `panel serve script.py`. When the dashboard is served via
+# pn.io.fastapi.add_application returning an explicit viewable, the implicit
+# template emits extra Bokeh roots (sidebar/header) that have NO target <div>
+# in the rendered page. Bokeh then throws "could not find HTML tag" and aborts
+# rendering the ENTIRE page -> black screen (no charts, no buttons). We instead
+# build an explicit FastListTemplate inside create_dashboard() and return it.
+pn.extension("echarts", sizing_mode="stretch_width", theme="dark")
 ACCENT = "orange"
-pn.state.template.param.update(
-    site="Apache Con 2022",
-    title="IoT Live Stream & Historical Dashboard",
-    sidebar_width=250,
-    accent_base_color=ACCENT,
-    header_background=ACCENT,
-    font="Montserrat",
-)
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +333,7 @@ def _refresh_simulator_ui(
 # ---------------------------------------------------------------------------
 # Dashboard factory
 # ---------------------------------------------------------------------------
-def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn.layout.Column:
+def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> "pn.viewable.Viewable":
     """Create the Panel dashboard layout.
 
     Called once per browser session by the Panel/FastAPI integration.
@@ -419,14 +419,21 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn
     logo_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), "app", "asf-estd-1999-logo.jpg"
     )
+    sidebar_items: List[Any] = []
     if os.path.exists(logo_path):
-        pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True).servable(area="sidebar")
-    pn.pane.Markdown(f"""# System Settings
+        sidebar_items.append(
+            pn.pane.JPG(logo_path, sizing_mode="scale_width", embed=True)
+        )
+    sidebar_items.append(
+        pn.pane.Markdown(
+            f"""# System Settings
 * **Zenoh Key**: `{config.ZENOH_KEY_EXPRESSION}`
 * **Zenoh Endpoint**: `{config.ZENOH_ENDPOINT}`
 * **IoTDB Host**: `{config.IOTDB_HOST}:{config.IOTDB_PORT}`
 * **IoTDB Device**: `{config.IOTDB_DEVICE}`
-""").servable(area="sidebar")
+"""
+        )
+    )
 
     # ---------------------------------------------------------------------------
     # Sensor Simulator control section
@@ -524,10 +531,27 @@ def create_dashboard(zenoh_client: ZenohClient, iotdb_client: IoTDBClient) -> pn
         sizing_mode="stretch_width",
     )
 
-    return pn.Column(
+    main_column = pn.Column(
         description,
         status_row,
         chart_row,
         simulator_card,
         sizing_mode="stretch_width",
     )
+
+    # Explicit template (NOT the implicit global pn.state.template). Returning a
+    # fully-assembled template gives add_application a single coherent root tree
+    # whose sidebar/main divs are all present in the served HTML -> no orphan
+    # Bokeh roots, no "could not find HTML tag", no black screen.
+    template = pn.template.FastListTemplate(
+        site="Apache Con 2022",
+        title="IoT Live Stream & Historical Dashboard",
+        sidebar_width=250,
+        accent_base_color=ACCENT,
+        header_background=ACCENT,
+        font="Montserrat",
+        theme="dark",
+        sidebar=sidebar_items,
+        main=[main_column],
+    )
+    return template

@@ -83,13 +83,14 @@ def page(browser):
 
 
 def test_echarts_canvases_mount(page):
-    """Each ECharts pane should render a <canvas> inside the Bokeh plot."""
-    # ECharts draws into a <canvas>; at least the two chart cards exist.
-    canvases = page.locator(".bk-ECharts canvas")
-    # Be lenient on count in CI (charts may still be initialising); assert > 0
-    # once the bokeh/ECharts models have instantiated.
-    canvases.first.wait_for(state="attached", timeout=20000)
-    assert canvases.count() >= 1
+    """Each ECharts pane should render a <canvas> inside the Bokeh plot.
+
+    FastListTemplate renders content inside shadow roots, so we walk all
+    shadow roots (see _SHADOW_PIERCING_JS) rather than a flat querySelector.
+    """
+    page.wait_for_timeout(6000)
+    result = page.evaluate(_SHADOW_PIERCING_JS)
+    assert result["canvases"] >= 1
 
 
 def test_dashboard_title_present(page):
@@ -98,19 +99,95 @@ def test_dashboard_title_present(page):
 
 
 def test_charts_receive_data(page):
-    """After a few refresh cycles the ECharts series should carry points.
+    """After a few refresh cycles the ECharts diagrams should have mounted.
 
-    We read the ECharts instance state off the Bokeh model's ``data`` and
-    assert the series has at least one datum (proving the diagrams display
-    real data, not just an empty grid). When no telemetry is flowing the
-    series may legitimately be empty, so we only assert when data exists.
+    Counts canvases across all shadow roots (FastListTemplate hides content in
+    shadow DOM). When no telemetry is flowing the series may legitimately be
+    empty, so we assert the canvases mounted rather than that data arrived.
     """
     # Give the periodic callbacks time to populate the charts.
     page.wait_for_timeout(5000)
-    result = page.evaluate("""
-        () => {
-            const canvases = document.querySelectorAll('.bk-ECharts canvas');
-            return canvases.length;
+    result = page.evaluate(_SHADOW_PIERCING_JS)
+    assert result["canvases"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Black-screen regression guard
+#
+# The dashboard once rendered a completely blank page (no charts, no buttons)
+# because dashboard.py mixed Panel's implicit global template
+# (pn.extension(template="fast") + .servable(area="sidebar")) with serving a
+# bare pn.Column via pn.io.fastapi.add_application. That produced Bokeh roots
+# with no target <div>, so Bokeh threw "could not find HTML tag" and aborted
+# rendering the ENTIRE page. Server-side (TestClient) tests could not catch it
+# because the failure is client-side in Bokeh's JS. The fix returns an explicit
+# FastListTemplate. These tests reproduce the user-visible symptom in a real
+# browser so the regression cannot come back unnoticed.
+#
+# NOTE: FastListTemplate renders its content inside shadow roots, so plain
+# document.querySelectorAll() does NOT reach the charts/buttons. We walk every
+# open shadow root to count canvases and collect button labels.
+# ---------------------------------------------------------------------------
+
+_SHADOW_PIERCING_JS = """
+    () => {
+        function collect(root, out) {
+            for (const c of root.querySelectorAll('canvas')) out.canvases++;
+            for (const b of root.querySelectorAll('button')) {
+                const t = (b.innerText || '').trim();
+                if (t) out.buttons.push(t);
+            }
+            for (const el of root.querySelectorAll('*')) {
+                if (el.shadowRoot) collect(el.shadowRoot, out);
+            }
         }
-        """)
-    assert result >= 1
+        const out = {canvases: 0, buttons: []};
+        collect(document, out);
+        return out;
+    }
+"""
+
+
+def test_no_render_errors_black_screen_regression(page):
+    """The page must load WITHOUT the fatal Bokeh 'could not find HTML tag'
+    error that blanked the whole dashboard. We capture pageerrors during load.
+    """
+    errors = []
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    # Re-navigate so the listener catches errors emitted during embedding.
+    page.goto(f"{DASHBOARD_URL}/panel", wait_until="networkidle", timeout=30000)
+    page.wait_for_timeout(6000)
+    fatal = [e for e in errors if "could not find" in e or "Error rendering Bokeh model" in e]
+    assert not fatal, f"Bokeh render errors (black screen regression): {fatal}"
+
+
+def test_both_echarts_canvases_render_shadow_dom(page):
+    """Both ECharts diagrams (Zenoh + IoTDB) must mount as <canvas> elements.
+
+    Counts canvases across ALL shadow roots (FastListTemplate hides content in
+    shadow DOM). A blank page reports 0; the healthy dashboard reports >= 2.
+    """
+    page.wait_for_timeout(6000)
+    result = page.evaluate(_SHADOW_PIERCING_JS)
+    assert result["canvases"] >= 2, (
+        f"Expected >= 2 ECharts canvases, found {result['canvases']} "
+        "(black screen / template regression)"
+    )
+
+
+def test_simulator_start_stop_buttons_present(page):
+    """The Start/Stop simulator buttons must be present in the rendered DOM.
+
+    Walks all shadow roots collecting button labels and asserts both the
+    Start and Stop simulator controls exist.
+    """
+    page.wait_for_timeout(6000)
+    result = page.evaluate(_SHADOW_PIERCING_JS)
+    labels = result["buttons"]
+    joined = " | ".join(labels)
+    assert any("Start Simulator" in b for b in labels), (
+        f"Start Simulator button missing. Buttons found: {joined}"
+    )
+    assert any("Stop Simulator" in b for b in labels), (
+        f"Stop Simulator button missing. Buttons found: {joined}"
+    )
