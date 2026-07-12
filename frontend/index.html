@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ApacheCon IoT Demo</title>
+  <script>
+    async function fetchStatus() {
+      const resp = await fetch('/api/status'); // proxy through backend
+      const data = await resp.json();
+      document.getElementById('status').textContent = JSON.stringify(data);
+    }
+    setInterval(fetchStatus, 2000);
+  </script>
+</head>
+<body>
+  <h1>ApacheCon IoT Demo Frontend</h1>
+  <pre id="status">Loading...</pre>
+</body>
+</html>

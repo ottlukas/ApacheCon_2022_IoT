@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Create non-root user
+RUN useradd -u 10001 -m appuser
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy simulator script and any needed code
+COPY scripts/ ./scripts/
+COPY app/ ./app/
+
+# Adjust ownership
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Default command runs the sensor simulator
+CMD ["python", "scripts/sensor_simulator.py"]
