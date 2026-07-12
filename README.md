@@ -8,12 +8,17 @@ This repository demonstrates an end-to-end, production-like IoT telemetry ingest
 
 The objective of this demo is to showcase how high-throughput sensor telemetry can be collected, bridged to a time-series database, and visualized in real-time.
 
-- **Local Python Sensor Simulator**: Simulates a physical IoT machine sensor and publishes telemetry messages to a Zenoh broker.
-- **Zenoh Broker**: Connects the simulator, the database bridge, and the web portal.
-- **Zenoh-to-IoTDB Bridge**: Subscribes to the live Zenoh topic, validates incoming JSON data using Pydantic, and persists telemetry in Apache IoTDB.
-- **FastAPI + Panel Dashboard**: Visualizes the metrics through two logically independent widgets:
-  1. A real-time gauge and line chart receiving data directly from Zenoh.
-  2. A bar chart updating periodically by querying historical data from Apache IoTDB.
+- **Zenoh Broker Container**: Connects the simulator, the database bridge, and the web portal.
+- **Zenoh-to-IoTDB Bridge Container**: Subscribes to the live Zenoh topic, validates incoming JSON data using Pydantic, and persists telemetry in Apache IoTDB.
+- **Apache IoTDB Container**: Stores the time-series data.
+- **FastAPI + Panel Dashboard Container**: 
+  - Hosts the sensor simulator (as a subprocess) 
+  - Serves the monitoring UI at `http://localhost:8080/panel`
+  - Provides APIs to start/stop the simulator
+  - Visualizes metrics through two logically independent widgets:
+    1. A real-time gauge and line chart receiving data directly from Zenoh.
+    2. A bar chart updating periodically by querying historical data from Apache IoTDB.
+- **User**: Accesses the dashboard via a browser.
 
 ---
 
@@ -21,300 +26,247 @@ The objective of this demo is to showcase how high-throughput sensor telemetry c
 
 ```mermaid
 flowchart LR
-    Sensor[Local Python Sensor Simulator] -->|Zenoh publish tcp/localhost:7447| Zenoh[Zenoh Broker Container]
-    Zenoh -->|subscribe| Bridge[Zenoh-to-IoTDB Bridge Container]
-    Bridge -->|insert timeseries| IoTDB[Apache IoTDB Container]
-    Dashboard[FastAPI + Panel Dashboard Container] -->|subscribe live data| Zenoh
+    subgraph DashboardContainer[Dashboard Container (iot-dashboard)]
+        Simulator[Sensor Simulator]:::internal
+        Dashboard[Panel + FastAPI Dashboard]:::internal
+    end
+    Zenoh[Zenoh Broker Container (zenoh-broker)]:::external
+    IoTDB[Apache IoTDB Container (iotdb-db)]:::external
+    Bridge[Zenoh-to-IoTDB Bridge Container (zenoh-iotdb-bridge)]:::external
+    User[Browser]:::external
+    
+    Simulator -->|Zenoh publish tcp/zenoh:7447| Zenoh
+    Zenoh -->|subscribe| Bridge
+    Bridge -->|insert timeseries| IoTDB
+    Dashboard -->|subscribe live data| Zenoh
     Dashboard -->|query historical data| IoTDB
-    User[Browser] -->|http://localhost:8080/panel| Dashboard
+    User -->|http://localhost:8080/panel| Dashboard
+    
+    classDef internal fill:#f9f,stroke:#333,stroke-width:1px;
+    classDef external fill:#bbf,stroke:#333,stroke-width:1px;
 ```
 
 ---
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose**
-- **Python 3.11+** or **3.12+** (for the local simulator and running test suites)
-- **pip** and **venv** python tools
+- **Docker** and **Docker Compose v2** (or Docker Desktop on Windows/macOS)
+  - Linux: Install [Docker Engine](https://docs.docker.com/engine/install/) and [Docker Compose plugin](https://docs.docker.com/compose/install/)
+  - Windows/macOS: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- (Optional) For running simulator/dashboard on host instead of containers:
+  - Python 3.11+ or 3.12+
+  - pip and venv python tools
 
 ---
 
-## Quick Start
+## Quick Start (Using Docker Compose)
 
-Follow these simple steps to run the complete environment:
+Follow these steps to run the complete environment using Docker Compose:
 
 1. **Configure Environment Variables**:
-   Copy the example environment file to `.env`:
    ```bash
    cp .env.example .env
+   # Edit .env if needed to customize ports, credentials, etc.
    ```
 
-2. **Spin Up the Containers**:
-   Launch the Docker Compose services in the background:
+2. **Start All Services**:
    ```bash
-   make up
+   docker compose up -d
    ```
-   *This starts the Zenoh broker, Apache IoTDB, the ingestion bridge, and the dashboard portal.*
+   This starts the Zenoh broker, Apache IoTDB, the ingestion bridge, and the dashboard container.
+   - The dashboard container includes the sensor simulator (as a subprocess) and the web dashboard.
+   - Containers start in detached mode (`-d`).
 
-3. **Install Local Python Environment**:
-   Initialize and activate a virtual environment, then install dependencies:
+3. **Start the Sensor Simulator**:
+   The simulator runs inside the dashboard container. Start it via the dashboard's API:
    ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements-dev.txt
+   curl -X POST http://localhost:8080/api/simulator/start
    ```
+   *Alternative*: Use the dashboard UI if it provides a start/stop button (check the UI).
 
-4. **Start the Sensor Simulator**:
-   Run the local telemetry simulator to start publishing data:
-   ```bash
-   make simulator
-   ```
-
-5. **Open the Dashboard**:
+4. **Open the Dashboard**:
    Navigate to the portal in your browser:
    [http://localhost:8080/panel](http://localhost:8080/panel)
 
 ---
 
-## Service URLs
+## Project Structure
 
-| Service / Port | Endpoint URL | Description |
-| :--- | :--- | :--- |
-| **FastAPI + Panel Dashboard** | [http://localhost:8080/panel](http://localhost:8080/panel) | Telemetry monitoring charts |
-| **Dashboard Health Check** | [http://localhost:8080/health](http://localhost:8080/health) | API Status Check |
-| **Dashboard Detailed Status** | [http://localhost:8080/api/status](http://localhost:8080/api/status) | Port and connection statistics |
-| **Simulator Control (start)** | `POST http://localhost:8080/api/simulator/start` | Launch the in-container sensor simulator |
-| **Simulator Control (stop)** | `POST http://localhost:8080/api/simulator/stop` | Stop the in-container sensor simulator |
-| **Simulator Status** | [http://localhost:8080/api/simulator/status](http://localhost:8080/api/simulator/status) | running / stopped |
-| **Simulator Live Log** | [http://localhost:8080/api/simulator/log](http://localhost:8080/api/simulator/log) | Rolling stdout of the simulator |
-| **Zenoh TCP Protocol** | `localhost:7447` | Used by simulator and external clients |
-| **Zenoh REST API** | [http://localhost:8000](http://localhost:8000) | Zenoh Admin REST access |
-| **Apache IoTDB Thrift RPC** | `localhost:6667` | Database connections |
+```
+ApacheCon_2022_IoT/
+├── .env.example          # Template environment variables
+├── .gitignore
+├── docker-compose.yml    # Defines all services (zenoh, iotdb, zenoh-to-iotdb, dashboard)
+├── Dockerfile.bridge     # Builds the Zenoh-to-IoTDB bridge
+├── Dockerfile.dashboard  # Builds the dashboard container (includes simulator & dashboard)
+├── app/
+│   ├── dashboard.py      # FastAPI + Panel application entrypoint
+│   └── ...               # Other application files
+├── scripts/
+│   └── sensor_simulator.py # Telemetry simulator script
+├── requirements-dev.txt  # Python dependencies for development
+├── requirements.txt      # Python dependencies for runtime
+└── tests/                # Test suites
+```
 
 ---
 
-## Run the Live Dashboard (Standalone)
+## Configuration
 
-You can run the Panel dashboard locally on your host machine to visualize both the real-time Zenoh stream and the persisted Apache IoTDB database values.
+The project uses environment variables defined in `.env` (copied from `.env.example`). Key variables:
 
-### Step-by-Step Instructions
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ZENOH_KEY_EXPRESSION` | Zenoh key expression for telemetry | `myfactory/machine1/temperature` |
+| `IOTDB_HOST` | IoTDB hostname (service name in compose) | `iotdb` |
+| `IOTDB_PORT` | IoTDB Thrift RPC port | `6667` |
+| `IOTDB_USER` | IoTDB username | `root` |
+| `IOTDB_PASSWORD` | IoTDB password | `root` |
+| `IOTDB_DATABASE` | IoTDB database namespace | `root.myfactory` |
+| `IOTDB_DEVICE` | IoTDB device path | `root.myfactory.machine1` |
+| `IOTDB_MEASUREMENT` | IoTDB measurement name | `temperature` |
+| `DASHBOARD_PORT` | Host port for dashboard | `8080` |
+| `SIMULATOR_INTERVAL_SECONDS` | Simulator publish interval (seconds) | `1` |
+| `SIMULATOR_MIN_VALUE` | Simulated min temperature | `15` |
+| `SIMULATOR_MAX_VALUE` | Simulated max temperature | `35` |
 
-1. **Start Zenoh Router, Apache IoTDB & Bridge**
-   Spin up the containerized Zenoh broker, Apache IoTDB, and the ingestion bridge:
+To customize, edit `.env` before running `docker compose up`.
+
+---
+
+## Running the Project
+
+### Using Docker Compose (Recommended)
+
+Follow the [Quick Start](#quick-start-using-docker-compose) steps above.
+
+### Running Simulator and Dashboard on Host (Alternative)
+
+If you prefer to run the simulator and dashboard on your host machine (while still using Docker Compose for Zenoh, IoTDB, and the bridge):
+
+1. Start the infrastructure services:
    ```bash
    docker compose up -d zenoh iotdb zenoh-to-iotdb
    ```
-   *(Note: The database container will initialize and run its internal health check. It takes ~20 seconds to be fully ready.
-   The `zenoh-to-iotdb` bridge subscribes to Zenoh and writes values into IoTDB — without it the IoTDB chart will remain empty.)*
 
-2. **Prepare Python Environment**
-   Activate your virtual environment and make sure dependencies are installed:
+2. Prepare your Python environment:
    ```bash
-   source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
-   pip install -r requirements.txt
+   python3 -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements-dev.txt
    ```
 
-3. **Start the Zenoh Producer**
-   Run the standalone educational sensor simulator to start publishing telemetry:
+3. Start the sensor simulator:
    ```bash
    python zenoh_producer.py
    ```
-   *(This starts publishing JSON telemetry readings to `myfactory/machine1/temperature` at a 1-second interval).*
 
-4. **Start the Panel Dashboard**
-   Launch the Panel application directly:
+4. Start the Panel dashboard:
    ```bash
    panel serve panel_script.py --autoreload --show
    ```
-   *This will open the dashboard in your default browser at [http://localhost:5006/panel_script](http://localhost:5006/panel_script).*
+   This opens the dashboard at [http://localhost:5006/panel_script](http://localhost:5006/panel_script).
 
-### Default Configuration Values
-The standalone dashboard and helper scripts use the following default configurations (can be overridden via environment variables or `.env`):
-- **Zenoh Router Endpoint**: `tcp/localhost:7447` (configurable via `ZENOH_HOST_ENDPOINT`)
-- **Zenoh Subscription Key**: `myfactory/machine1/temperature` (configurable via `ZENOH_KEY_EXPRESSION`)
-- **Apache IoTDB Host/Port**: `127.0.0.1:6667` (configurable via `IOTDB_HOST`/`IOTDB_PORT`)
-- **Apache IoTDB Path**: `root.myfactory.machine1.temperature` (configurable via `IOTDB_DEVICE`/`IOTDB_MEASUREMENT`)
-- **UI Refresh Rates**: 1000 ms for Zenoh Stream, 2000 ms for IoTDB query.
-
----
-
-## Common Developer Commands
-
-The project includes a `Makefile` to simplify common operations:
-
-- `make up` - Start the containerized services (`zenoh`, `iotdb`, `bridge`, `dashboard`).
-- `make down` - Shut down and clean container instances, networks, and volumes.
-- `make simulator` - Launch the *local* sensor simulator loop (host process, great for dev without Docker).
-- `make integration-test` - Run all automated configurations and connectivity checks.
-- `make clean` - Clean up python temporary caches.
-
----
-
-## In-Dashboard Sensor Simulator Control
-
-In addition to running the simulator as a local host process (`make simulator` /
-`python scripts/sensor_simulator.py`), the **dashboard container itself can
-start and stop the simulator** and show its live log. This keeps the whole
-pipeline — `Simulator -> Zenoh -> Bridge -> IoTDB -> Panel` — inside one
-Docker network so you never need a process on the host.
-
-### How it works
-
-- `app/simulator_controller.py` owns a single subprocess that runs
-  `scripts/sensor_simulator.py`. It captures the simulator's stdout into a
-  bounded, thread-safe rolling log and exposes `start_simulator()` /
-  `stop_simulator()` / `simulator_status()` / `get_log()`.
-- `app/main.py` exposes this as REST endpoints (all under `/api/simulator/`):
-  - `POST /api/simulator/start` — launch the simulator (idempotent).
-  - `POST /api/simulator/stop` — terminate it gracefully (idempotent).
-  - `GET  /api/simulator/status` — `running` / `stopped` + detail string.
-  - `GET  /api/simulator/log?tail=N` — the last `N` log lines.
-  - `GET  /api/status` now also reports `simulator` state.
-- `app/dashboard.py` renders a **"Sensor Simulator Control"** card (collapsible)
-  with **▶ Start** / **■ Stop** buttons and a live, auto-refreshing
-  **Log** panel. The same controller is shared with the REST API, so a start
-  issued from the API is reflected in the dashboard and vice-versa.
-
-### Using it in the UI
-
-1. Bring up the stack: `make up`.
-2. Open <http://localhost:8080/panel>.
-3. Scroll to the **Sensor Simulator Control** card.
-4. Click **▶ Start Simulator** — the badge flips to 🟢 Running and the log
-   panel begins streaming each published reading (e.g.
-   `[2026-...] Simulated machine1.temperature = 23.41 celsius`).
-5. Watch **Live Zenoh Stream** (Diagram 1) and **Live IoTDB Time Series**
-   (Diagram 2) populate as the bridge persists the data.
-6. Click **■ Stop Simulator** to halt publishing.
-
-> Note: when you run `make simulator` on the host instead, the dashboard's
-> **Start/Stop** buttons won't control that external process — they manage the
-> dashboard container's own simulator subprocess. Both publish to the same key
-> expression, so either path feeds the charts.
-
-### Local (host) simulator
-
-The standalone script gained a `--value` flag for deterministic runs:
-
-```bash
-python scripts/sensor_simulator.py --once --value 24.5      # single fixed reading
-python scripts/sensor_simulator.py --interval 0.5 --min 10 --max 40
-python scripts/sensor_simulator.py --endpoint tcp/localhost:7447
-```
-
----
-
-## Architecture Diagram (with in-container simulator control)
-
-```mermaid
-flowchart LR
-    subgraph DashboardContainer[FastAPI + Panel Dashboard Container]
-        UI[Panel UI: Start/Stop buttons + live log]
-        API[REST /api/simulator/*]
-        Sim[Sensor Simulator subprocess scripts/sensor_simulator.py]
-        UI -->|control| API
-        API -->|spawn/terminate| Sim
-        Sim -->|stdout -> rolling log| UI
-    end
-    Sim -->|Zenoh publish tcp/zenoh:7447| Zenoh[Zenoh Broker Container]
-    Zenoh -->|subscribe| Bridge[Zenoh-to-IoTDB Bridge Container]
-    Bridge -->|insert timeseries| IoTDB[Apache IoTDB Container]
-    DashboardContainer -->|subscribe live data| Zenoh
-    DashboardContainer -->|query historical data| IoTDB
-    User[Browser] -->|http://localhost:8080/panel| UI
-```
-
----
-
-## Data Model
-
-### Zenoh Telemetry Payload (JSON)
-The simulator publishes JSON objects representing telemetry reading records:
-```json
-{
-  "sensor_id": "machine1-temperature",
-  "device": "machine1",
-  "measurement": "temperature",
-  "value": 23.4,
-  "unit": "celsius",
-  "timestamp": "2026-07-09T12:00:00.000Z"
-}
-```
-
-### Apache IoTDB Timeseries Path
-The bridge persists data into the following time series path:
-- `root.myfactory.machine1.temperature`
-
----
-
-## Testing
-
-You can verify the stability and correctness of your setup using the test suite. 
-
-To run the tests:
-```bash
-make integration-test
-```
-
-The tests cover:
-1. **Configuration**: Checking module defaults and environment overrides.
-2. **Zenoh Connection**: Verifying publishing and subscribing loopback.
-3. **IoTDB Connection**: Verifying schema creation, inserts, and queries.
-4. **Bridge Flow**: E2E check. Sending a message to Zenoh and asserting it is successfully bridged to IoTDB.
-5. **Dashboard Health**: Validating `/health` and `/api/status` API responses.
-6. **Dashboard ECharts rendering (unit)**: `tests/test_dashboard_echarts.py` verifies the `create_echarts_option` builder produces a valid ECharts option dict (axes, series, data wiring) and that the `pn.pane.ECharts` pane is constructed with the correct configuration.
-7. **Dashboard rendering (integration)**: `tests/test_dashboard_integration.py` boots the **exact** FastAPI+Panel app the container runs (`uvicorn app.main:app`) in-process and asserts `GET /panel` returns HTTP 200 with the ECharts library embedded **locally** (no external CDN).
-8. **Dashboard rendering (E2E, browser)**: `tests/test_dashboard_e2e.py` loads `/panel` in a headless Chromium (Playwright) and asserts the ECharts canvases mount and receive data. Skipped automatically when Playwright or a running server is unavailable.
-9. **Sensor simulator flow**: `tests/test_sensor_flow.py` covers two layers: (a) API/controller contract tests (`test_simulator_api_*`) that start/stop the simulator subprocess and verify the rolling log — these run **without Docker**; (b) `test_sensor_full_pipeline`, a Docker-gated end-to-end check that starts the simulator, confirms the value arrives on Zenoh (Diagram 1 source) and is persisted to IoTDB by the bridge (Diagram 2 source), then stops it. Skipped automatically when the stack is down.
-
-*Note: Integration tests (except configuration checks) require the Docker Compose stack to be running (`make up`). If the services are not running, integration tests will be skipped automatically.*
-
-### Running the simulator-flow tests specifically
-
-```bash
-# API + controller contract (no Docker required)
-python -m pytest tests/test_sensor_flow.py -k api -v
-
-# Full pipeline (requires `make up`)
-python -m pytest tests/test_sensor_flow.py -k full_pipeline -v
-```
-
-### Running the dashboard/rendering tests specifically
-
-```bash
-# Unit + integration (no Docker, no browser required)
-python -m pytest tests/test_dashboard_echarts.py tests/test_dashboard_integration.py -v
-
-# End-to-end (requires a running dashboard + Playwright Chromium)
-pip install playwright && playwright install --with-deps chromium
-export DASHBOARD_URL=http://localhost:8080   # or DASHBOARD_PORT
-python -m pytest tests/test_dashboard_e2e.py -v
-```
-
-To run the **whole** suite:
-
-```bash
-make integration-test
-```
-
-
+> **Note**: The host-based method requires Python dependencies and is provided for development/debugging. The Docker Compose method is recommended for consistency.
 
 ---
 
 ## Troubleshooting
 
-- **Multicast Discovery Limits**: Docker multicast routing between host and containerized networks can be unstable. The sensor simulator is configured to bypass multicast and connect directly to Zenoh via `tcp/localhost:7447`.
-- **Database Startup Latencies**: Apache IoTDB can take 15–20 seconds to boot up. The ingestion bridge and test suites use intelligent reconnect and retry loops to prevent startup failures.
-- **Empty Charts / No Zenoh Data**: If the Zenoh chart is blank, verify that the simulator is running in your terminal (`python zenoh_producer.py` or `make simulator`) and publishing to the exact same key expression (`myfactory/machine1/temperature`) and endpoint (`tcp/localhost:7447`).
-- **Empty Charts / No IoTDB Data**: Ensure the database bridge container is running to persist Zenoh data to IoTDB (`docker compose ps` and `docker compose logs -f zenoh-to-iotdb`).
-- **IoTDB Connection Refused**: Verify Apache IoTDB is fully up and listening on port `6667`. Check container status with `docker compose ps` and ensure no other process is bound to port `6667` on the host.
-- **Zenoh Subscriber Receives No Samples**: Ensure the publisher is connecting to the correct broker IP/port and is using the exact same key expression (without a leading slash, as Zenoh 1.x path expressions must not start with `/`).
-- **Dashboard page is blank / ECharts panes never appear**: The whole dashboard fails to render (HTTP 500 or blank page) if `app/dashboard.py` raises while building the view. The most common cause was a hard-coded absolute logo path (`/app/app/asf-estd-1999-logo.jpg`) combined with `pn.pane.JPG(..., embed=True)` — Panel fetches embedded images via `requests.get`, so a missing/scheme-less path raises `MissingSchema` and aborts `template.server_doc`. The path is now resolved relative to the package (`os.path.join(<pkg>/app/...)`) and guarded with `os.path.exists`. If you still see a blank page, check the container logs for `MissingSchema`/`server_doc` tracebacks and confirm the logo file ships at `/app/app/asf-estd-1999-logo.jpg` (Dockerfile copies `app/` to `/app/app/`).
-- **ECharts library fails to load (offline container)**: Modern Panel bundles the ECharts JS locally under `static/extensions/panel/bundled/echarts/`, so no internet is required at runtime. If you pin an older Panel (pre-1.4) that loads ECharts from a CDN, the charts will stay blank in an offline container — keep `panel>=1.3.0` resolved to a current release (≥1.4) or pin an explicit modern version.
-- **ECharts Pane Does Not Update**: Make sure you did not modify the chart data dictionary without triggering the change event. If updating values, always call `chart_pane.param.trigger('data')` to force a browser refresh.
+### Common Issues on Linux
+
+- **Docker daemon not running**: Start with `sudo systemctl start docker`
+- **Permission denied**: Add your user to the `docker` group: `sudo usermod -aG docker $USER` (requires relogin)
+- **Port already in use**: Check what's using ports 7447, 8000, 6667, 8080 with `sudo ss -tlnp` and stop conflicting services
+- **Slow IoTDB startup**: Apache IoTDB takes 15-20 seconds to initialize. The health check in `docker-compose.yml` accounts for this.
+- **Empty dashboards**: 
+  - Verify simulator is running: `curl -X POST http://localhost:8080/api/simulator/status`
+  - Check bridge logs: `docker compose logs -f zenoh-iotdb-bridge`
+  - Verify Zenoh connection: simulator must use `tcp/zenoh:7447` (not localhost)
+
+### Common Issues on Windows (Docker Desktop)
+
+- **Docker Desktop not running**: Launch Docker Desktop application and wait for it to initialize
+- **WSL 2 backend issues**: Ensure WSL 2 is installed and set as default in Docker Desktop Settings > Resources > WSL Integration
+- **Firewall blocking ports**: Allow Docker through Windows Defender Firewall
+- **Volume permission issues**: 
+  - Right-click Docker Desktop > Settings > Resources > File Sharing
+  - Ensure your project drive (e.g., C:) is shared
+  - Alternatively, use WSL 2 paths (e.g., `\\wsl$\Ubuntu\home\user\project`)
+- **Container startup slow**: Increase Docker Desktop's memory/CPU allocation in Settings > Resources
+- **localhost not working**: Try `http://host.docker.internal:8080/panel` if using Docker Desktop for Mac/Windows with specific network configurations
+
+### General Troubleshooting Steps
+
+1. **Check container status**:
+   ```bash
+   docker compose ps
+   ```
+   All services should show `State: Up`
+
+2. **View logs**:
+   ```bash
+   docker compose logs -f  # Follow all logs
+   docker compose logs -f zenoh-iotdb-bridge  # Specific service
+   ```
+
+3. **Restart services**:
+   ```bash
+   docker compose restart
+   ```
+
+4. **Reset everything** (WARNING: deletes all data):
+   ```bash
+   docker compose down -v
+   docker compose up -d
+   ```
+
+5. **Verify simulator is publishing**:
+   ```bash
+   # Inside dashboard container:
+   docker compose exec dashboard python -c "import time; time.sleep(2); print('Simulator status:'); !curl -s http://localhost:8080/api/simulator/status"
+   ```
 
 ---
 
-## Migration Notes (from old Local Setup)
+## Updating the Project
 
-Starting Zenoh and Apache IoTDB services manually on your local system is no longer necessary. All core components run securely in Docker. Only the `sensor_simulator.py` script remains local to mimic an external physical device.
+After making changes to the code or Dockerfiles, rebuild and restart the affected services:
+
+```bash
+# Rebuild all services and restart
+docker compose up -d --build
+
+# Or rebuild specific services (e.g., after changing dashboard code)
+docker compose build dashboard
+docker compose up -d dashboard
+```
+
+If you modified Python dependencies, rebuild the dashboard container:
+```bash
+docker compose build --no-cache dashboard
+docker compose up -d dashboard
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+Please ensure your code follows the existing style and includes tests where applicable.
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+*ApacheCon 2022 IoT Demo: Zenoh, Apache IoTDB & Panel*
