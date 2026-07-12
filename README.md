@@ -1,6 +1,8 @@
 # ApacheCon 2022 IoT Demo: Zenoh, Apache IoTDB & Panel
 
-This repository demonstrates an end-to-end, production-like IoT telemetry ingestion and visualization pipeline. It features a distributed architecture powered by **Eclipse Zenoh**, **Apache IoTDB**, and a **Panel + FastAPI** dashboard, all orchestrated via Docker Compose.
+This repository demonstrates an end-to-end, production-like IoT telemetry ingestion and visualization pipeline. It features a distributed architecture powered by **Eclipse Zenoh**, **Apache IoTDB**, and a **Panel (HoloViz)** dashboard, all orchestrated via Docker Compose.
+
+> **NGINX removed.** The dashboard UI is served directly by **Panel (HoloViz)** — there is no NGINX reverse proxy in this stack. The Panel server runs inside the `panel-dashboard` container and is exposed on port **5006** (mapped to the container's internal 8080).
 
 ---
 
@@ -10,15 +12,17 @@ The objective of this demo is to showcase how high-throughput sensor telemetry c
 
 - **Zenoh Broker Container**: Connects the simulator, the database bridge, and the web portal.
 - **Zenoh-to-IoTDB Bridge Container**: Subscribes to the live Zenoh topic, validates incoming JSON data using Pydantic, and persists telemetry in Apache IoTDB.
-- **Apache IoTDB Container**: Stores the time-series data.
-- **FastAPI + Panel Dashboard Container**: 
-  - Hosts the sensor simulator (as a subprocess) 
-  - Serves the monitoring UI at `http://localhost:8080/panel`
+- **Apache IoTDB Container** (version 2.0.x): Stores the time-series data.
+- **Panel Dashboard Container** (Panel + FastAPI):
+  - Hosts the sensor simulator (as a subprocess)
+  - Serves the monitoring UI directly via **Panel (HoloViz)** at `http://localhost:5006/panel`
   - Provides APIs to start/stop the simulator
   - Visualizes metrics through two logically independent widgets:
     1. A real-time gauge and line chart receiving data directly from Zenoh.
     2. A bar chart updating periodically by querying historical data from Apache IoTDB.
 - **User**: Accesses the dashboard via a browser.
+
+> **No NGINX.** The frontend previously served by an NGINX container has been replaced entirely by the Panel dashboard service.
 
 ---
 
@@ -40,7 +44,7 @@ flowchart LR
     Bridge -->|insert timeseries| IoTDB
     Dashboard -->|subscribe live data| Zenoh
     Dashboard -->|query historical data| IoTDB
-    User -->|http://localhost:8080/panel| Dashboard
+    User -->|http://localhost:5006/panel| Dashboard
     
     classDef internal fill:#f9f,stroke:#333,stroke-width:1px;
     classDef external fill:#bbf,stroke:#333,stroke-width:1px;
@@ -86,7 +90,7 @@ Follow these steps to run the complete environment using Docker Compose:
 
 4. **Open the Dashboard**:
    Navigate to the portal in your browser:
-   [http://localhost:8080/panel](http://localhost:8080/panel)
+   [http://localhost:5006/panel](http://localhost:5006/panel)
 
 ---
 

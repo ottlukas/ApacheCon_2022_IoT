@@ -26,13 +26,16 @@ services:
   # Apache IoTDB – standalone (single-node) configuration
   # ---------------------------------------------------------------------------
   iotdb:
-    image: apache/iotdb:1.3.3-standalone
+    image: apache/iotdb:2.0.10-standalone
     container_name: iotdb-db
     ports:
       - "6667:6667/tcp"    # Thrift RPC – used by bridge, dashboard, and tests
     environment:
       - JVM_XMS=512M
       - JVM_XMX=1G
+      # Bind IoTDB's RPC listener to all interfaces so other containers can
+      # reach it (the image default is 127.0.0.1, which only works in-container).
+      - dn_rpc_address=0.0.0.0
     volumes:
       - iotdb-data:/iotdb/data
       - iotdb-logs:/iotdb/logs
@@ -42,7 +45,7 @@ services:
         - "CMD"
         - "bash"
         - "-c"
-        - "echo 'show timeseries' | /iotdb/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root"
+        - "echo 'show timeseries' | /iotdb/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root"
       interval: 10s
       timeout: 10s
       retries: 6
@@ -85,13 +88,69 @@ services:
   # Serves the monitoring UI at http://localhost:8080/panel.
   # Built from Dockerfile.dashboard.
   # ---------------------------------------------------------------------------
-  dashboard:
+  panel-dashboard:
     build:
       context: .
       dockerfile: Dockerfile.dashboard
-    container_name: iot-dashboard
+    container_name: iot-panel-dashboard
     ports:
-      - "${DASHBOARD_PORT:-8080}:8080"
+      - "5006:8080"
+    depends_on:
+      zenoh:
+        condition: service_started
+      iotdb:
+        condition: service_healthy
+      simulator:
+        condition: service_started
+    environment:
+      - ZENOH_ENDPOINT=tcp/zenoh:7447
+      - ZENOH_KEY_EXPRESSION=${ZENOH_KEY_EXPRESSION:-myfactory/machine1/temperature}
+      - IOTDB_HOST=iotdb
+      - IOTDB_PORT=6667
+      - IOTDB_USER=${IOTDB_USER:-root}
+      - IOTDB_PASSWORD=${IOTDB_PASSWORD:-root}
+      - IOTDB_DATABASE=${IOTDB_DATABASE:-root.myfactory}
+      - IOTDB_DEVICE=${IOTDB_DEVICE:-root.myfactory.machine1}
+      - IOTDB_MEASUREMENT=${IOTDB_MEASUREMENT:-temperature}
+      - DASHBOARD_PORT=8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - apachecon-iot-net
+
+
+  # ---------------------------------------------------------------------------
+  # Simulator service
+  # ---------------------------------------------------------------------------
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulator
+    container_name: iot-simulator
+    depends_on:
+      - zenoh
+    environment:
+      - ZENOH_ENDPOINT=tcp/zenoh:7447
+      - SIMULATOR_INTERVAL_SECONDS=${SIMULATOR_INTERVAL_SECONDS:-1}
+      - SIMULATOR_MIN_VALUE=${SIMULATOR_MIN_VALUE:-15}
+      - SIMULATOR_MAX_VALUE=${SIMULATOR_MAX_VALUE:-35}
+    networks:
+      - apachecon-iot-net
+
+  # ---------------------------------------------------------------------------
+  # Test runner
+  # Runs the test suite (pytest) against the running stack.
+  # Usage: docker compose -f docker-compose.yml run --rm test
+  # ---------------------------------------------------------------------------
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: iot-test
     depends_on:
       zenoh:
         condition: service_started
@@ -107,19 +166,11 @@ services:
       - IOTDB_DATABASE=${IOTDB_DATABASE:-root.myfactory}
       - IOTDB_DEVICE=${IOTDB_DEVICE:-root.myfactory.machine1}
       - IOTDB_MEASUREMENT=${IOTDB_MEASUREMENT:-temperature}
-      - DASHBOARD_PORT=8080
-      # The dashboard container also hosts the sensor simulator: the
-      # "Start/Stop Simulator" controls launch scripts/sensor_simulator.py as a
-      # subprocess that publishes straight to the in-network Zenoh broker above.
-      - SIMULATOR_INTERVAL_SECONDS=${SIMULATOR_INTERVAL_SECONDS:-1}
-      - SIMULATOR_MIN_VALUE=${SIMULATOR_MIN_VALUE:-15}
-      - SIMULATOR_MAX_VALUE=${SIMULATOR_MAX_VALUE:-35}
-    restart: unless-stopped
     networks:
       - apachecon-iot-net
+    profiles:
+      - test
 
-# ---------------------------------------------------------------------------
-# Shared network
 # ---------------------------------------------------------------------------
 networks:
   apachecon-iot-net:
